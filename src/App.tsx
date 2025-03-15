@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData from './GameData'
-
+import GameData, { Actor } from './GameData'
+import ActorEditor from './ActorEditor';
+const fs = window.require('fs');
+const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
 
 function App() {
@@ -15,12 +17,35 @@ function App() {
       GameData.setRoot(data.path);
       console.log(data.config);
       setProjectLoaded(true);
+      loadActors(data.path);
     });
 
     return () => {
       ipcRenderer.removeAllListeners('project-opened');
     };
   }, []);
+
+  const loadActors = (rootPath: string) => {
+    const actorsPath = path.join(rootPath, 'data', 'actors');
+    try {
+      const files = fs.readdirSync(actorsPath);
+      const actorList: Actor[] = [];
+      files.forEach((file: string) => {
+        if (file.endsWith('.json')) {
+          const data = fs.readFileSync(path.join(actorsPath, file), 'utf8');
+          const actor = JSON.parse(data);
+          // 转换数据结构
+          actor.attributes = Object.entries(actor.attributes).map(([key, value]) => ({ key, value }));
+          actor.wealth = Object.entries(actor.wealth).map(([key, value]) => ({ key, value }));
+          actor.items = Object.entries(actor.items).map(([key, value]) => ({ key, value }));
+          actorList.push(actor);
+          GameData.setActorInfo(actor.id, actor);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load actors:', error);
+    }
+  };
 
   const handleOpenProject = () => {
     ipcRenderer.send('open-project');
@@ -29,8 +54,10 @@ function App() {
   const menuItems = ["地图编辑", "角色编辑", "道具编辑", "装备编辑", "敌人编辑", "图块编辑", "动画编辑", "公共事件", "系统设置"]
   const renderComponent = () => {
     switch (selectedIndex) {
+      case 1:
+        return <ActorEditor actors={GameData.getAllActorInfo()} root={GameData.getRoot()} />;
       case 8:
-        return <SystemSetting />
+        return <SystemSetting />;
     }
     return null;
   }

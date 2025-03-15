@@ -1,7 +1,8 @@
 import { Box, Button, Grid2, Paper, TextField, Snackbar, Alert } from "@mui/material";
 import { useState } from "react";
 import GameData from "./GameData";
-import FileSelector from './FileSelector';
+import FileSelector from './utils/FileSelector';
+import Hint from "./utils/uHint";
 
 function SystemSetting() {
     const [systemData, setSystemData] = useState<{ [key: string]: string | string[] }>({});
@@ -9,7 +10,11 @@ function SystemSetting() {
     const [currentPath, setCurrentPath] = useState("");
     const [currentKey, setCurrentKey] = useState("");
     const [isMultiple, setIsMultiple] = useState(false);
-    const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'warning' as 'warning' | 'error' });
+    const [snackbar, setSnackbar] = useState<{
+        open: boolean;
+        severity: 'success' | 'info' | 'warning' | 'error';
+        message: string;
+    }>({ open: false, message: '', severity: 'warning' });
 
     const columns = [
         [
@@ -167,16 +172,10 @@ function SystemSetting() {
                 onSelect={handleFileSelection}
                 multiple={isMultiple}
             />
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={3000}
-                onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
-            >
-                <Alert severity={snackbar.severity} onClose={() => setSnackbar(prev => ({ ...prev, open: false }))}>
-                    {snackbar.message}
-                </Alert>
-            </Snackbar>
+            <Hint
+                snackbar={snackbar}
+                handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+            />
         </Box>
     );
 }
