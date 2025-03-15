@@ -41,6 +41,8 @@ npm run electron
 - `npm start` : Start only the React development server
 - `npm run build` : Build the production version
 - `npm run electron` : Start Electron without development mode
+- `npm run package:win` : Package Windows program only
+- `npm run package:mac` : Package macOS program only
 
 ## Project Structure
 - `/src` : React source code

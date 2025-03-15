@@ -85,11 +85,62 @@ function createWindow() {
         }
     });
 
+    const gotTheLock = app.requestSingleInstanceLock();
+    if (!gotTheLock) {
+        app.quit();
+    } else {
+        app.on('second-instance', (event, commandLine) => {
+            const filePath = commandLine[commandLine.length - 1];
+            if (filePath.endsWith('.mtproj')) {
+                try {
+                    const projectPath = path.dirname(filePath);
+                    const projectData = fs.readFileSync(filePath, 'utf8');
+                    const projectConfig = JSON.parse(projectData);
+                    mainWindow.webContents.send('project-opened', {
+                        path: projectPath,
+                        config: projectConfig
+                    });
+                } catch (error) {
+                    dialog.showErrorBox('错误', '无法读取项目文件');
+                }
+            }
+
+            if (mainWindow) {
+                if (mainWindow.isMinimized()) mainWindow.restore();
+                mainWindow.focus();
+            }
+        });
+
+        // 处理启动参数
+        if (process.argv.length > 1) {
+            const filePath = process.argv[process.argv.length - 1];
+            if (filePath.endsWith('.mtproj')) {
+                try {
+                    const projectPath = path.dirname(filePath);
+                    const projectData = fs.readFileSync(filePath, 'utf8');
+                    const projectConfig = JSON.parse(projectData);
+                    mainWindow.webContents.send('project-opened', {
+                        path: projectPath,
+                        config: projectConfig
+                    });
+                } catch (error) {
+                    dialog.showErrorBox('错误', '无法读取项目文件');
+                }
+            }
+        }
+    }
+
     // 设置应用菜单
     const menu = Menu.buildFromTemplate(template);
     Menu.setApplicationMenu(menu);
 
-    mainWindow.loadURL('http://localhost:3000');
+    const isDev = !app.isPackaged;
+    if (isDev) {
+        mainWindow.loadURL('http://localhost:3000');
+    }
+    else {
+        mainWindow.loadFile(path.join(__dirname, '../build/index.html'));
+    }
 
     // 添加热更新支持
     try {
@@ -106,7 +157,9 @@ function createWindow() {
         `);
     });
 
-    mainWindow.webContents.openDevTools();
+    if (isDev) {
+        mainWindow.webContents.openDevTools();
+    }
     mainWindow.maximize();
 
     return mainWindow;

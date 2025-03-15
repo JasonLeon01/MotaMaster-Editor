@@ -41,6 +41,8 @@ npm run electron
 - `npm start` ：仅启动 React 开发服务器
 - `npm run build` ：构建生产版本
 - `npm run electron` ：不使用开发模式启动 Electron
+- `npm run package:win` ：仅打包 Windows 程序
+- `npm run package:mac` ：仅打包 macOS 程序
 
 ## 项目结构
 - `/src` ：React 源代码
