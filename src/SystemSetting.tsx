@@ -1,11 +1,16 @@
 import { Box, Button, Grid2, Paper, TextField, Snackbar, Alert } from "@mui/material";
-import { useState } from "react";
-import GameData from "./GameData";
+import { useEffect, useState } from "react";
+import GameData, { Config } from "./GameData";
 import FileSelector from './utils/FileSelector';
 import Hint from "./utils/uHint";
 
-function SystemSetting() {
-    const [systemData, setSystemData] = useState<{ [key: string]: string | string[] }>({});
+interface SystemSettingProps {
+    configs: Config;
+    root: string;
+}
+
+function SystemSetting({ configs, root }: SystemSettingProps) {
+    const [systemData, setSystemData] = useState<{ [key: string]: string | number | string[] }>({});
     const [showFileSelector, setShowFileSelector] = useState(false);
     const [currentPath, setCurrentPath] = useState("");
     const [currentKey, setCurrentKey] = useState("");
@@ -26,7 +31,6 @@ function SystemSetting() {
             { label: "默认字号", editable: true, path: "", multiple: false },
             { label: "窗口风格", editable: false, path: "assets/system/", multiple: false },
             { label: "窗口默认不透明度", editable: true, path: "", multiple: false },
-            { label: "窗口背景模式", editable: true, path: "", multiple: false },
         ],
         [
             { label: "选择SE", editable: false, path: "assets/sounds", multiple: false },
@@ -43,8 +47,65 @@ function SystemSetting() {
         ]
     ];
 
+    useEffect(() => {
+        const initialData: { [key: string]: string | number | string[] } = {};
+        columns.forEach((column, columnIndex) => {
+            column.forEach((item, itemIndex) => {
+                const key = `${columnIndex}-${itemIndex}`;
+                if (columnIndex === 0) {
+                    // system 配置
+                    const configKey = getConfigKey(item.label, 'system');
+                    if (configKey) {
+                        if (typeof configs.system[configKey as keyof typeof configs.system] === 'string') {
+                            initialData[key] = configs.system[configKey as keyof typeof configs.system] || '';
+                        }
+                        else if (typeof configs.system[configKey as keyof typeof configs.system] === 'number') {
+                            initialData[key] = configs.system[configKey as keyof typeof configs.system].toString();
+                        }
+                        else if (Array.isArray(configs.system[configKey as keyof typeof configs.system])) {
+                            initialData[key] = configs.system[configKey as keyof typeof configs.system];
+                        }
+                    }
+                } else if (columnIndex === 1) {
+                    const configKey = getConfigKey(item.label, 'audio');
+                    if (configKey) {
+                        initialData[key] = configs.audio[configKey as keyof typeof configs.audio] || '';
+                    }
+                }
+            });
+        });
+        setSystemData(initialData);
+    }, []);
+
+    const getConfigKey = (label: string, section: 'system' | 'audio'): string | null => {
+        const keyMap: { [key: string]: { section: 'system' | 'audio', key: string } } = {
+            "标题名": { section: 'system', key: 'title_name' },
+            "标题ICON": { section: 'system', key: 'title_icon' },
+            "标题背景": { section: 'system', key: 'title_file' },
+            "标题BGM": { section: 'system', key: 'title_bgm' },
+            "字体文件": { section: 'system', key: 'font_name' },
+            "默认字号": { section: 'system', key: 'font_size' },
+            "窗口风格": { section: 'system', key: 'windowskin_file' },
+            "窗口默认不透明度": { section: 'system', key: 'window_opacity' },
+            "选择SE": { section: 'audio', key: 'cursor_se' },
+            "确认SE": { section: 'audio', key: 'decision_se' },
+            "取消SE": { section: 'audio', key: 'cancel_se' },
+            "警告SE": { section: 'audio', key: 'buzzer_se' },
+            "商店SE": { section: 'audio', key: 'shop_se' },
+            "装备SE": { section: 'audio', key: 'equip_se' },
+            "保存SE": { section: 'audio', key: 'save_se' },
+            "读取SE": { section: 'audio', key: 'load_se' },
+            "开门SE": { section: 'audio', key: 'gate_se' },
+            "楼梯SE": { section: 'audio', key: 'stair_se' },
+            "物品获取SE": { section: 'audio', key: 'get_se' }
+        };
+
+        const mapping = keyMap[label];
+        return mapping && mapping.section === section ? mapping.key : null;
+    };
+
     const openFileSelector = (path: string, key: string, multiple: boolean) => {
-        const fullPath = path ? `${GameData.getRoot()}/${path}` : GameData.getRoot();
+        const fullPath = path ? `${root}/${path}` : root;
         setCurrentPath(fullPath.replace(/\/\//g, '/'));
         setCurrentKey(key);
         setIsMultiple(multiple);
@@ -52,10 +113,25 @@ function SystemSetting() {
     };
 
     const handleFileSelection = (files: string[]) => {
+        const [columnIndex, itemIndex] = currentKey.split('-').map(Number);
+        const item = columns[columnIndex][itemIndex];
+        const configKey = getConfigKey(
+            item.label,
+            columnIndex === 0 ? 'system' : 'audio'
+        );
+        const value = files.length === 1 ? files[0] : files;
         setSystemData(prev => ({
             ...prev,
             [currentKey]: files
         }));
+        if (configKey) {
+            if (columnIndex === 0) {
+                configs.system[configKey as keyof typeof configs.system] = value as never;
+            } else {
+                configs.audio[configKey as keyof typeof configs.audio] = value as never;
+            }
+            GameData.setConfig(configs);
+        }
     };
 
     const judgeValue = (label: string, value: string) => {
@@ -112,6 +188,19 @@ function SystemSetting() {
             ...prev,
             [key]: value
         }));
+        const [columnIndex, itemIndex] = key.split('-').map(Number);
+        const configKey = getConfigKey(
+            item.label,
+            columnIndex === 0 ? 'system' : 'audio'
+        );
+        if (configKey) {
+            if (columnIndex === 0) {
+                configs.system[configKey as keyof typeof configs.system] = value as never;
+            } else {
+                configs.audio[configKey as keyof typeof configs.audio] = value as never;
+            }
+            GameData.setConfig(configs);
+        }
     };
 
     return (
@@ -155,7 +244,7 @@ function SystemSetting() {
                                                 variant="contained"
                                                 onClick={() => openFileSelector(item.path, key, item.multiple || false)}
                                             >
-                                                选择文件
+                                                ...
                                             </Button>
                                         )}
                                     </Box>

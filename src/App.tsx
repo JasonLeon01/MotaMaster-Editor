@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Actor } from './GameData'
+import GameData, { Actor, Config } from './GameData'
 import ActorEditor from './ActorEditor';
 const fs = window.require('fs');
 const path = window.require('path');
@@ -11,19 +11,54 @@ const { ipcRenderer } = window.require('electron');
 function App() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [projectLoaded, setProjectLoaded] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     ipcRenderer.on('project-opened', (event: any, data: { path: string, config: any }) => {
-      GameData.setRoot(data.path);
       console.log(data.config);
+      GameData.setRoot(data.path);
       setProjectLoaded(true);
+      loadConfigs(data.path);
       loadActors(data.path);
+      setRefreshKey(prev => prev + 1);
     });
 
     return () => {
       ipcRenderer.removeAllListeners('project-opened');
     };
   }, []);
+
+  const loadConfigs = (rootPath: string) => {
+    const configPath = path.join(rootPath, 'data', "configs");
+    try {
+      const systemFile = path.join(configPath, 'system.json');
+      const systemData = fs.readFileSync(systemFile, 'utf8');
+      const systemConfig = JSON.parse(systemData);
+
+      Object.entries(systemConfig).forEach(([section, value]) => {
+          GameData.setConfigAt(
+            "system" as keyof Config,
+            section as keyof Config[keyof Config],
+            value as string | number | string[]
+          );
+      });
+
+      const audioFile = path.join(configPath, 'audio.json');
+      const audioData = fs.readFileSync(audioFile, 'utf8');
+      const audioConfig = JSON.parse(audioData);
+
+      Object.entries(audioConfig).forEach(([section, value]) => {
+          GameData.setConfigAt(
+            "audio" as keyof Config,
+            section as keyof Config[keyof Config],
+            value as string
+          );
+      });
+
+    } catch (error) {
+      console.error('Failed to load system config:', error);
+    }
+  }
 
   const loadActors = (rootPath: string) => {
     const actorsPath = path.join(rootPath, 'data', 'actors');
@@ -55,9 +90,17 @@ function App() {
   const renderComponent = () => {
     switch (selectedIndex) {
       case 1:
-        return <ActorEditor actors={GameData.getAllActorInfo()} root={GameData.getRoot()} />;
+        return <ActorEditor
+          key={refreshKey}
+          actors={GameData.getAllActorInfo()}
+          root={GameData.getRoot()}
+        />;
       case 8:
-        return <SystemSetting />;
+        return <SystemSetting
+          key={refreshKey}
+          configs={GameData.getConfig()}
+          root={GameData.getRoot()}
+        />;
     }
     return null;
   }
