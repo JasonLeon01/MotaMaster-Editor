@@ -1,4 +1,4 @@
-import { Box, Button, Grid2, Paper, TextField, Snackbar, Alert } from "@mui/material";
+import { Box, Button, Grid2, TextField } from "@mui/material";
 import { useEffect, useState } from "react";
 import GameData, { Config } from "./GameData";
 import FileSelector from './utils/FileSelector';

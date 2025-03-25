@@ -2,8 +2,9 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Actor, Config } from './GameData'
+import GameData, { Config, Actor, Item } from './GameData'
 import ActorEditor from './ActorEditor';
+import ItemEditor from 'ItemEditor'
 const fs = window.require('fs');
 const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
@@ -20,6 +21,7 @@ function App() {
       setProjectLoaded(true);
       loadConfigs(data.path);
       loadActors(data.path);
+      loadItems(data.path);
       setRefreshKey(prev => prev + 1);
     });
 
@@ -69,7 +71,6 @@ function App() {
         if (file.endsWith('.json')) {
           const data = fs.readFileSync(path.join(actorsPath, file), 'utf8');
           const actor = JSON.parse(data);
-          // 转换数据结构
           actor.attributes = Object.entries(actor.attributes).map(([key, value]) => ({ key, value }));
           actor.wealth = Object.entries(actor.wealth).map(([key, value]) => ({ key, value }));
           actor.items = Object.entries(actor.items).map(([key, value]) => ({ key, value }));
@@ -81,6 +82,24 @@ function App() {
       console.error('Failed to load actors:', error);
     }
   };
+
+  const loadItems = (rootPath: string) => {
+    const itemsPath = path.join(rootPath, 'data', 'items');
+    try {
+      const files = fs.readdirSync(itemsPath);
+      const itemList: Item[] = [];
+      files.forEach((file: string) => {
+        if (file.endsWith('.json')) {
+          const data = fs.readFileSync(path.join(itemsPath, file), 'utf8');
+          const item = JSON.parse(data);
+          itemList.push(item);
+          GameData.setItemInfo(item.id, item);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load items:', error);
+    }
+  }
 
   const handleOpenProject = () => {
     ipcRenderer.send('open-project');
@@ -95,6 +114,12 @@ function App() {
           actors={GameData.getAllActorInfo()}
           root={GameData.getRoot()}
         />;
+      case 2:
+          return <ItemEditor
+              key={refreshKey}
+              items={GameData.getAllItemInfo()}
+              root={GameData.getRoot()}
+          />;
       case 8:
         return <SystemSetting
           key={refreshKey}

@@ -1,15 +1,3 @@
-export interface Actor {
-    id: number;
-    name: string;
-    file: string;
-    attributes: { key: string, value: number }[];  // 改为数组形式
-    wealth: { key: string, value: number }[];
-    items: { key: string, value: number }[];
-    equip_slot: string[];
-    equip: number[];
-    animation_id: number;
-}
-
 export interface Config {
     system: {
         title_icon: string;
@@ -34,14 +22,36 @@ export interface Config {
     }
 }
 
+export interface Actor {
+    id: number;
+    name: string;
+    file: string;
+    attributes: { key: string, value: number }[];  // 改为数组形式
+    wealth: { key: string, value: number }[];
+    items: { key: string, value: number }[];
+    equip_slot: string[];
+    equip: number[];
+    animation_id: number;
+}
+
+export interface Item {
+    id: number;
+    name: string;
+    file: [string, number, number];
+    description: string;
+    price: number;
+    cost: boolean;
+    event: number | null;
+}
+
 class GameDataRecorder {
     private root: string;
-    private actorsInfo: Actor [];;
     private config: Config;
+    private actorsInfo: Actor [];;
+    private itemsInfo: Item [];
 
     constructor() {
         this.root = "";
-        this.actorsInfo = [];
         this.config = {
             system: {
                 title_icon: "",
@@ -65,6 +75,8 @@ class GameDataRecorder {
                 get_se: "",
             }
         };
+        this.actorsInfo = [];
+        this.itemsInfo = [];
     }
 
     getRoot() {
@@ -73,22 +85,6 @@ class GameDataRecorder {
 
     setRoot(path: string) {
         this.root = path;
-    }
-
-    getAllActorInfo() {
-        return this.actorsInfo;
-    }
-
-    getActorInfo(id: number) {
-        return this.actorsInfo[id];
-    }
-
-    setActorInfo(id: number, actorInfo: Actor) {
-        this.actorsInfo[id] = actorInfo;
-    }
-
-    setAllActorInfo(actorsInfo: Actor[]) {
-        this.actorsInfo = actorsInfo;
     }
 
     getConfig() {
@@ -113,6 +109,38 @@ class GameDataRecorder {
         } else {
             this.config[key1][key2] = value as never;
         }
+    }
+
+    getAllActorInfo() {
+        return this.actorsInfo;
+    }
+
+    getActorInfo(id: number) {
+        return this.actorsInfo[id];
+    }
+
+    setActorInfo(id: number, actorInfo: Actor) {
+        this.actorsInfo[id] = actorInfo;
+    }
+
+    setAllActorInfo(actorsInfo: Actor[]) {
+        this.actorsInfo = actorsInfo;
+    }
+
+    getAllItemInfo() {
+        return this.itemsInfo;
+    }
+
+    getItemInfo(id: number) {
+        return this.itemsInfo[id];
+    }
+
+    setItemInfo(id: number, itemInfo: Item) {
+        this.itemsInfo[id] = itemInfo;
+    }
+
+    setAllItemInfo(itemsInfo: Item[]) {
+        this.itemsInfo = itemsInfo;
     }
 }
 

@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Button, Grid } from '@mui/material';
+import { useState } from 'react';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2 } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import GameData, { Actor } from './GameData';
@@ -136,8 +136,8 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         }
         else if (type === 'items') {
             setMapName("编辑物品");
-            setMapKeyName("物品名");
-            setMapValueName("物品值");
+            setMapKeyName("物品ID");
+            setMapValueName("初始携带数量");
         }
     };
 
@@ -233,16 +233,9 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             >
                 <Droppable droppableId={type} type={type}>
                     {(provided: DroppableProvided) => (
-                        <List
-                            {...provided.droppableProps}
-                            ref={provided.innerRef}
-                        >
+                        <List {...provided.droppableProps} ref={provided.innerRef}>
                             {items.map((item, index) => (
-                                <Draggable
-                                    key={item.key}
-                                    draggableId={`${type}-${item.key}`}
-                                    index={index}
-                                >
+                                <Draggable key={item.key} draggableId={`${type}-${item.key}`} index={index}>
                                     {(provided: DraggableProvided) => (
                                         <ListItemButton
                                             ref={provided.innerRef}
@@ -254,7 +247,13 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                                 <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
                                                     <DragIndicatorIcon />
                                                 </Box>
-                                                <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                <ListItemText
+                                                    primary={
+                                                        type === 'items'
+                                                            ? `${item.key}: ${GameData.getItemInfo(Number(item.key))?.name || '未知物品'} x ${item.value}`
+                                                            : `${item.key}: ${item.value}`
+                                                    }
+                                                />
                                             </Box>
                                             <Button
                                                 size="small"
@@ -340,16 +339,16 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
 
             {selectedActor && (
                 <Box sx={{ flex: 1 }}>
-                    <Grid container spacing={2}>
-                        <Grid item xs={12}>
+                    <Grid2 container spacing={2}>
+                        <Grid2 size={{xs: 12}}>
                             <TextField
                                 label="名称"
                                 value={selectedActor.name}
                                 onChange={handleNameChange}
                                 fullWidth
                             />
-                        </Grid>
-                        <Grid item xs={12}>
+                        </Grid2>
+                        <Grid2 size={{xs: 12}}>
                             <Paper
                                 sx={{
                                     p: 2,
@@ -371,8 +370,8 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                     }}
                                 />
                             </Paper>
-                        </Grid>
-                    </Grid>
+                        </Grid2>
+                    </Grid2>
                     {renderMapEditor('属性', selectedActor.attributes, 'attributes')}
                     {renderMapEditor('财富', selectedActor.wealth, 'wealth')}
                     {renderMapEditor('物品', selectedActor.items, 'items')}
