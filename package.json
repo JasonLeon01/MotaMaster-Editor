@@ -24,9 +24,9 @@
     "test": "craco test",
     "electron": "electron .",
     "electron-dev": "concurrently \"npm start\" \"wait-on http://localhost:3000 && electron .\"",
-    "package": "npm run build && electron-packager . MotaMaster-Editor --platform=win32,darwin --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite",
-    "package:win": "npm run build && electron-packager . MotaMaster-Editor --platform=win32 --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite",
-    "package:mac": "npm run build && electron-packager . MotaMaster-Editor --platform=darwin --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite"
+    "package": "npm run build && electron-packager . MotaMaster-Editor --platform=win32,darwin --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite --without-snapshot --deref-symlinks=false --compress=max",
+    "package:win": "npm run build && electron-packager . MotaMaster-Editor --platform=win32 --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite --without-snapshot --deref-symlinks=false --compress=max",
+    "package:mac": "npm run build && electron-packager . MotaMaster-Editor --platform=darwin --arch=x64 --icon=./public/favicon.ico --out=./out --app-version=0.1.0 --ignore=\"^/(?!build|electron|package\\.json$).*\" --prune=true --asar --overwrite --without-snapshot --deref-symlinks=false --compress=max"
   },
   "devDependencies": {
     "@types/node": "^16.18.46",
