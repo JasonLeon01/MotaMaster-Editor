@@ -55,7 +55,7 @@ export interface Equip {
     animation_id: number;
 }
 
-class GameDataRecorder {
+export class GameDataRecorder {
     private root: string;
     private config: Config;
     private actorsInfo: Actor [];;
@@ -170,6 +170,30 @@ class GameDataRecorder {
 
     setAllEquipInfo(equipInfo: Equip[]) {
         this.equipInfo = equipInfo;
+    }
+
+    getCopyToAllData() {
+        const data = new GameDataRecorder();
+        data.setRoot(this.root);
+        data.setConfig(JSON.parse(JSON.stringify(this.config)));
+        data.setAllActorInfo(this.actorsInfo.map(actor => ({
+            ...actor,
+            attributes: actor.attributes.map(attr => ({ ...attr })),
+            wealth: actor.wealth.map(w => ({ ...w })),
+            items: actor.items.map(item => ({ ...item })),
+            equip_slot: [...actor.equip_slot],
+            equip: [...actor.equip]
+        })));
+        data.setAllItemInfo(this.itemsInfo.map(item => ({
+            ...item,
+            file: [...item.file]
+        })));
+        data.setAllEquipInfo(this.equipInfo.map(equip => ({
+            ...equip,
+            file: [...equip.file],
+            attr_plus: equip.attr_plus.map(attr => ({ ...attr }))
+        })));
+        return data;
     }
 }
 

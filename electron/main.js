@@ -40,42 +40,6 @@ ipcMain.on('open-project', (event) => {
 });
 
 // 添加菜单模板配置
-const template = [
-    {
-        label: '文件',
-        submenu: [
-            {
-                label: '打开项目',
-                click: () => {
-                    dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
-                        properties: ['openFile'],
-                        filters: [
-                            { name: 'MotaMaster Project', extensions: ['mtproj'] }
-                        ]
-                    }).then(result => {
-                        if (!result.canceled && result.filePaths.length > 0) {
-                            const projectPath = path.dirname(result.filePaths[0]);
-                            const projectFile = result.filePaths[0];
-                            try {
-                                const projectData = fs.readFileSync(projectFile, 'utf8');
-                                const projectConfig = JSON.parse(projectData);
-                                BrowserWindow.getFocusedWindow().webContents.send('project-opened', {
-                                    path: projectPath,
-                                    config: projectConfig
-                                });
-                            } catch (error) {
-                                dialog.showErrorBox('错误', '无法读取项目文件');
-                            }
-                        }
-                    });
-                }
-            },
-            { type: 'separator' },
-            { role: 'quit', label: '退出' }
-        ]
-    }
-];
-
 function createWindow() {
     const mainWindow = new BrowserWindow({
         width: 1600,
@@ -134,8 +98,53 @@ function createWindow() {
     }
 
     // 设置应用菜单
-    const menu = Menu.buildFromTemplate(template);
-    Menu.setApplicationMenu(menu);
+    ipcMain.on('set-menu', (event, menuConfig) => {
+        const template = [
+            {
+                label: '文件',
+                submenu: [
+                    {
+                        label: '打开项目',
+                        click: () => {
+                            dialog.showOpenDialog(BrowserWindow.getFocusedWindow(), {
+                                properties: ['openFile'],
+                                filters: [
+                                    { name: 'MotaMaster Project', extensions: ['mtproj'] }
+                                ]
+                            }).then(result => {
+                                if (!result.canceled && result.filePaths.length > 0) {
+                                    const projectPath = path.dirname(result.filePaths[0]);
+                                    const projectFile = result.filePaths[0];
+                                    try {
+                                        const projectData = fs.readFileSync(projectFile, 'utf8');
+                                        const projectConfig = JSON.parse(projectData);
+                                        BrowserWindow.getFocusedWindow().webContents.send('project-opened', {
+                                            path: projectPath,
+                                            config: projectConfig
+                                        });
+                                    } catch (error) {
+                                        dialog.showErrorBox('错误', '无法读取项目文件');
+                                    }
+                                }
+                            });
+                        }
+                    },
+                    {
+                        label: menuConfig.save.label,
+                        accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S',
+                        click: () => {
+                            mainWindow.webContents.send('menu-save');
+                        }
+                    },
+                    { type: 'separator' },
+                    { role: 'quit', label: '退出' }
+                ]
+            }
+        ];
+                
+        const menu = Menu.buildFromTemplate(template);
+        Menu.setApplicationMenu(menu);
+    });
 
     const isDev = !app.isPackaged;
     if (isDev) {

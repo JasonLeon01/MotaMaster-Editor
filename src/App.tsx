@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import './App.css'
-import { Box, List, ListItemButton, ListItemText, Paper, Button } from '@mui/material'
+import { Box, List, ListItemButton, ListItemText, Paper, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, ListItem, ListItemIcon } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Config, Actor, Item, Equip } from './GameData'
+import GameData, { Config, Actor, Item, Equip, GameDataRecorder } from './GameData'
 import ActorEditor from './ActorEditor';
 import ItemEditor from 'ItemEditor'
 import EquipEditor from './EquipEditor';
+import Hint from 'utils/uHint'
 const fs = window.require('fs');
 const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
@@ -14,17 +15,35 @@ function App() {
   const [selectedIndex, setSelectedIndex] = useState(0)
   const [projectLoaded, setProjectLoaded] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0);
+  const [originalData, setOriginalData] = useState<GameDataRecorder>();
+  const [saveDialog, setSaveDialog] = useState({
+    open: false,
+    changes: [] as { type: string; id: number; name: string }[]
+  });
+  const [snackbar, setSnackbar] = useState<{
+    open: boolean;
+    message: string;
+    severity: 'success' | 'error' | 'info';
+  }>({
+    open: false,
+    message: '',
+    severity: 'info'
+  });
 
   useEffect(() => {
     ipcRenderer.on('project-opened', (event: any, data: { path: string, config: any }) => {
       console.log(data.config);
-      GameData.setRoot(data.path);
-      setProjectLoaded(true);
-      loadConfigs(data.path);
-      loadActors(data.path);
-      loadItems(data.path);
-      loadEquips(data.path);
-      setRefreshKey(prev => prev + 1);
+      if (data && data.config) {
+        GameData.setRoot(data.path);
+        setProjectLoaded(true);
+        loadConfigs(data.path);
+        loadActors(data.path);
+        loadItems(data.path);
+        loadEquips(data.path);
+        const origin = GameData.getCopyToAllData();
+        setOriginalData(origin);
+        setRefreshKey(prev => prev + 1);
+      }
     });
 
     return () => {
@@ -120,12 +139,160 @@ function App() {
     } catch (error) {
       console.error('Failed to load equips:', error);
     }
-    console.log(GameData.getAllEquipInfo());
   }
 
   const handleOpenProject = () => {
     ipcRenderer.send('open-project');
   };
+
+  const handleSaveProject = useCallback(() => {
+    if (!originalData) return;
+    const changes: { type: string; id: number; name: string }[] = [];
+    
+    if (JSON.stringify(originalData.getConfig()) !== JSON.stringify(GameData.getConfig())) {
+      changes.push({ type: 'config', id: -1, name: '系统配置' });
+    }
+
+    GameData.getAllActorInfo().forEach(actor => {
+      const originalActor = originalData.getActorInfo(actor.id);
+      if (JSON.stringify(originalActor) !== JSON.stringify(actor)) {
+        changes.push({ type: 'actor', id: actor.id, name: actor.name });
+      }
+    });
+
+    GameData.getAllItemInfo().forEach(item => {
+      const originalItem = originalData.getItemInfo(item.id);
+      if (JSON.stringify(originalItem) !== JSON.stringify(item)) {
+        changes.push({ type: 'item', id: item.id, name: item.name });
+      }
+    });
+
+    GameData.getAllEquipInfo().forEach(equip => {
+      const originalEquip = originalData.getEquipInfo(equip.id);
+      if (JSON.stringify(originalEquip) !== JSON.stringify(equip)) {
+        changes.push({ type: 'equip', id: equip.id, name: equip.name });
+      }
+    });
+
+    if (changes.length === 0) {
+      setSnackbar({
+        open: true,
+        message: '没有需要保存的更改',
+        severity: 'info'
+      });
+      return;
+    }
+    setSaveDialog({
+      open: true,
+      changes
+    });
+  }, [originalData]);
+
+  const handleConfirmSave = useCallback((selectedChanges: { type: string; id: number; name: string }[]) => {
+    const rootPath = GameData.getRoot();
+    if (!rootPath) return;
+
+    try {
+      if (selectedChanges.some(change => change.type === 'config')) {
+        const configPath = path.join(rootPath, 'data', 'configs');
+        fs.writeFileSync(
+          path.join(configPath, 'system.json'),
+          JSON.stringify(GameData.getConfig().system, null, 2)
+        );
+        fs.writeFileSync(
+          path.join(configPath, 'audio.json'),
+          JSON.stringify(GameData.getConfig().audio, null, 2)
+        );
+      }
+
+      selectedChanges.filter(change => change.type === 'actor').forEach(change => {
+        const actor = GameData.getActorInfo(change.id);
+        if (actor) {
+          const saveActor = {
+            ...actor,
+            attributes: actor.attributes.reduce((obj, item) => ({
+              ...obj,
+              [item.key]: item.value
+            }), {}),
+            wealth: actor.wealth.reduce((obj, item) => ({
+              ...obj,
+              [item.key]: item.value
+            }), {}),
+            items: actor.items.reduce((obj, item) => ({
+              ...obj,
+              [item.key]: item.value
+            }), {})
+          };
+          
+          fs.writeFileSync(
+            path.join(rootPath, 'data', 'actors', `actor_${actor.id}.json`),
+            JSON.stringify(saveActor, null, 2)
+          );
+        }
+      });
+
+      selectedChanges.filter(change => change.type === 'item').forEach(change => {
+        const item = GameData.getItemInfo(change.id);
+        if (item) {
+          fs.writeFileSync(
+            path.join(rootPath, 'data', 'items', `item_${item.id}.json`),
+            JSON.stringify(item, null, 2)
+          );
+        }
+      });
+
+      selectedChanges.filter(change => change.type === 'equip').forEach(change => {
+        const equip = GameData.getEquipInfo(change.id);
+        if (equip) {
+          const saveEquip = {
+            ...equip,
+            attr_plus: equip.attr_plus.reduce((obj, item) => ({
+              ...obj,
+              [item.key]: item.value
+            }), {})
+          };
+
+          fs.writeFileSync(
+            path.join(rootPath, 'data', 'equips', `equip_${equip.id}.json`),
+            JSON.stringify(saveEquip, null, 2)
+          );
+        }
+      });
+
+
+      setOriginalData(GameData.getCopyToAllData());
+      setSnackbar({
+        open: true,
+        message: '保存成功！',
+        severity: 'success'
+      });
+    } catch (error) {
+      setSnackbar({
+        open: true,
+        message: '保存失败：' + (error as Error).message,
+        severity: 'error'
+      });
+    } finally {
+      setSaveDialog(prev => ({ ...prev, open: false }));
+    }
+  }, []);
+
+  useEffect(() => {
+    ipcRenderer.send('set-menu', {
+      save: {
+        label: '保存',
+        accelerator: process.platform === 'darwin' ? 'Cmd+S' : 'Ctrl+S'
+      }
+    });
+
+    ipcRenderer.on('menu-save', () => {
+      handleSaveProject();
+    });
+
+    return () => {
+      ipcRenderer.removeAllListeners('menu-save');
+    };
+  }, [handleSaveProject]);
 
   const menuItems = ["地图编辑", "角色编辑", "道具编辑", "装备编辑", "敌人编辑", "图块编辑", "动画编辑", "公共事件", "系统设置"]
   const renderComponent = () => {
@@ -186,6 +353,54 @@ function App() {
     );
   }
 
+  const SaveDialog = () => {
+    const [selectedChanges, setSelectedChanges] = useState<{ type: string; id: number; name: string }[]>([]);
+
+    useEffect(() => {
+      setSelectedChanges(saveDialog.changes);
+    }, [saveDialog.changes]);
+
+    const handleToggle = (change: { type: string; id: number; name: string }) => {
+      setSelectedChanges(prev => {
+        const exists = prev.find(item => item.type === change.type && item.id === change.id);
+        if (exists) {
+          return prev.filter(item => item.type !== change.type || item.id !== change.id);
+        }
+        return [...prev, change];
+      });
+    };
+
+    return (
+      <Dialog open={saveDialog.open} onClose={() => setSaveDialog(prev => ({ ...prev, open: false }))}>
+        <DialogTitle>确认保存更改</DialogTitle>
+        <DialogContent>
+          <List>
+            {saveDialog.changes.map((change) => (
+              <ListItem key={`${change.type}-${change.id}`}>
+                <ListItemIcon>
+                  <Checkbox
+                    edge="start"
+                    checked={selectedChanges.some(item => item.type === change.type && item.id === change.id)}
+                    onChange={() => handleToggle(change)}
+                  />
+                </ListItemIcon>
+                <ListItemText 
+                  primary={`${change.name} (${change.type === 'config' ? '配置' : 
+                    change.type === 'actor' ? '角色' : 
+                    change.type === 'item' ? '物品' : '装备'})`} 
+                />
+              </ListItem>
+            ))}
+          </List>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSaveDialog(prev => ({ ...prev, open: false }))}>取消</Button>
+          <Button onClick={() => handleConfirmSave(selectedChanges)} variant="contained">保存</Button>
+        </DialogActions>
+      </Dialog>
+    );
+  };
+
   return (
     <Box sx={{
       display: 'flex',
@@ -220,7 +435,6 @@ function App() {
         </List>
       </Box>
       <Box sx={{
-        // flex: 1,
         padding: 2,
         width: '80vw'
       }}>
@@ -230,6 +444,11 @@ function App() {
           {renderComponent()}
         </Paper>
       </Box>
+      <SaveDialog />
+      <Hint
+        snackbar={snackbar}
+        handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+      />
     </Box>
   )
 }
