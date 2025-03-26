@@ -3,6 +3,9 @@ const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
+// 添加这一行来设置应用名称
+app.name = 'MotaMaster';
+
 ipcMain.on('read-folder', (event, folderPath) => {
     try {
         const files = fs.readdirSync(folderPath);

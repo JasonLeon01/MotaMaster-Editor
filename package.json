@@ -1,5 +1,6 @@
 {
   "name": "motamaster-editor",
+  "productName": "MotaMaster",
   "version": "0.1.0",
   "private": true,
   "main": "electron/main.js",
