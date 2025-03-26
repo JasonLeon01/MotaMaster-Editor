@@ -48,7 +48,6 @@ npm run electron
 - `/src` : React source code
 - `/electron` : Electron main process code
 - `/public` : Static assets
-- `/assets` : Game assets (after project creation)
 
 ## License
 This project is licensed under the zlib License - see the [LICENSE](LICENSE) file for details.

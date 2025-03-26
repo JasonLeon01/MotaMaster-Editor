@@ -48,7 +48,6 @@ npm run electron
 - `/src` ：React 源代码
 - `/electron` ：Electron 主进程代码
 - `/public` ：静态资源
-- `/assets` ：游戏资源（创建项目后）
 
 ## 许可证
 本项目采用 zlib 许可证 - 详见 [LICENSE](LICENSE) 文件。
