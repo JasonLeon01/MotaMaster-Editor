@@ -2,9 +2,10 @@ import { useEffect, useState } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Config, Actor, Item } from './GameData'
+import GameData, { Config, Actor, Item, Equip } from './GameData'
 import ActorEditor from './ActorEditor';
 import ItemEditor from 'ItemEditor'
+import EquipEditor from './EquipEditor';
 const fs = window.require('fs');
 const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
@@ -22,6 +23,7 @@ function App() {
       loadConfigs(data.path);
       loadActors(data.path);
       loadItems(data.path);
+      loadEquips(data.path);
       setRefreshKey(prev => prev + 1);
     });
 
@@ -101,6 +103,26 @@ function App() {
     }
   }
 
+  const loadEquips = (rootPath: string) => {
+    const equipsPath = path.join(rootPath, 'data', 'equips');
+    try {
+      const files = fs.readdirSync(equipsPath);
+      const equipList: Equip[] = [];
+      files.forEach((file: string) => {
+        if (file.endsWith('.json')) {
+          const data = fs.readFileSync(path.join(equipsPath, file), 'utf8');
+          const equip = JSON.parse(data);
+          equip.attr_plus = Object.entries(equip.attr_plus).map(([key, value]) => ({ key, value }));
+          equipList.push(equip);
+          GameData.setEquipInfo(equip.id, equip);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load equips:', error);
+    }
+    console.log(GameData.getAllEquipInfo());
+  }
+
   const handleOpenProject = () => {
     ipcRenderer.send('open-project');
   };
@@ -118,6 +140,12 @@ function App() {
           return <ItemEditor
               key={refreshKey}
               items={GameData.getAllItemInfo()}
+              root={GameData.getRoot()}
+          />;
+      case 3:
+          return <EquipEditor
+              key={refreshKey}
+              equips={GameData.getAllEquipInfo()}
               root={GameData.getRoot()}
           />;
       case 8:

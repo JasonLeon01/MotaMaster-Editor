@@ -44,11 +44,23 @@ export interface Item {
     event: number | null;
 }
 
+export interface Equip {
+    id: number;
+    name: string;
+    file: [string, number, number];
+    description: string;
+    attr_plus: { key: string, value: number }[];
+    price: number;
+    type: string;
+    animation_id: number;
+}
+
 class GameDataRecorder {
     private root: string;
     private config: Config;
     private actorsInfo: Actor [];;
     private itemsInfo: Item [];
+    private equipInfo: Equip [];
 
     constructor() {
         this.root = "";
@@ -77,6 +89,7 @@ class GameDataRecorder {
         };
         this.actorsInfo = [];
         this.itemsInfo = [];
+        this.equipInfo = [];
     }
 
     getRoot() {
@@ -141,6 +154,22 @@ class GameDataRecorder {
 
     setAllItemInfo(itemsInfo: Item[]) {
         this.itemsInfo = itemsInfo;
+    }
+
+    getAllEquipInfo() {
+        return this.equipInfo;
+    }
+
+    getEquipInfo(id: number) {
+        return this.equipInfo[id];
+    }
+
+    setEquipInfo(id: number, equipInfo: Equip) {
+        this.equipInfo[id] = equipInfo;
+    }
+
+    setAllEquipInfo(equipInfo: Equip[]) {
+        this.equipInfo = equipInfo;
     }
 }
 
