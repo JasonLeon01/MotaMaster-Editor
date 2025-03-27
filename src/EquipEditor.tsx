@@ -56,7 +56,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
         const newEquip: Equip = {
             id: newId,
             name: newEquipName,
-            file: ['equips.png', 0, 0],
+            file: ['', 0, 0],
             description: '',
             attr_plus: [],
             price: 0,
@@ -207,15 +207,27 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                    <img
-                        src={`file://${getEquipImagePath(selectedEquip.file[0])}`}
-                        alt={selectedEquip.file[0]}
-                        style={{
-                            imageRendering: 'pixelated',
-                            cursor: 'pointer'
-                        }}
-                        onClick={handleImageClick}
-                    />
+                    {selectedEquip.file[0] ? (
+                        <>
+                            <img
+                                src={`file://${getEquipImagePath(selectedEquip.file[0])}`}
+                                alt={selectedEquip.file[0]}
+                                style={{
+                                    imageRendering: 'pixelated',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={handleImageClick}
+                            />
+                        </>
+                    ) : (
+                        <Box
+                            sx={{
+                                width: '128px',
+                                height: '128px',
+                                backgroundColor: '#ccc'
+                            }}
+                        />
+                    )}
                     <Box
                         sx={{
                             position: 'absolute',

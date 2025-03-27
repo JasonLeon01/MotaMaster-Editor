@@ -47,7 +47,7 @@ function ItemEditor({ items, root }: ItemEditorProps) {
         const newItem: Item = {
             id: newId,
             name: newItemName,
-            file: ['items.png', 0, 0],
+            file: ['', 0, 0],
             description: '',
             price: 0,
             cost: true,
@@ -126,15 +126,27 @@ function ItemEditor({ items, root }: ItemEditorProps) {
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ position: 'relative', display: 'inline-block' }}>
-                    <img
-                        src={`file://${getItemImagePath(selectedItem.file[0])}`}
-                        alt={selectedItem.file[0]}
-                        style={{
-                            imageRendering: 'pixelated',
-                            cursor: 'pointer'
-                        }}
-                        onClick={handleImageClick}
-                    />
+                {selectedItem.file[0] ? (
+                        <>
+                            <img
+                                src={`file://${getItemImagePath(selectedItem.file[0])}`}
+                                alt={selectedItem.file[0]}
+                                style={{
+                                    imageRendering: 'pixelated',
+                                    cursor: 'pointer'
+                                }}
+                                onClick={handleImageClick}
+                            />
+                        </>
+                    ) : (
+                        <Box
+                            sx={{
+                                width: '128px',
+                                height: '128px',
+                                backgroundColor: '#ccc'
+                            }}
+                        />
+                    )}
                     <Box
                         sx={{
                             position: 'absolute',

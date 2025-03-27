@@ -56,7 +56,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         const newActor: Actor = {
             id: newId,
             name: newActorName,
-            file: 'default.png', // 默认图片
+            file: '',
             attributes: [],
             wealth: [],
             items: [],
@@ -354,21 +354,32 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                     p: 2,
                                     textAlign: 'center',
                                     cursor: 'pointer',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center',
                                     '&:hover': {
                                         backgroundColor: 'rgba(0, 0, 0, 0.04)'
                                     }
                                 }}
                                 onClick={handleImageClick}
                             >
-                                <img
-                                    src={`file://${getCharacterImagePath(selectedActor.file)}`}
-                                    alt={selectedActor.file}
-                                    style={{
-                                        maxWidth: '100%',
-                                        height: 'auto',
-                                        imageRendering: 'pixelated'
-                                    }}
-                                />
+                                {selectedActor.file ? (
+                                    <img
+                                        src={`file://${getCharacterImagePath(selectedActor.file)}`}
+                                        alt={selectedActor.file}
+                                        style={{
+                                            imageRendering: 'pixelated'
+                                        }}
+                                    />
+                                ) : (
+                                    <Box
+                                        sx={{
+                                            width: '128px',
+                                            height: '128px',
+                                            backgroundColor: '#ccc'
+                                        }}
+                                    />
+                                )}
                             </Paper>
                         </Grid2>
                     </Grid2>
