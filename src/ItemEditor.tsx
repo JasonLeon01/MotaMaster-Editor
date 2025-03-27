@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, Checkbox, FormControlLabel, IconButton } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import GameData, { Item } from './GameData';
@@ -186,14 +186,12 @@ function ItemEditor({ items, root }: ItemEditorProps) {
             <Paper sx={{ width: '200px', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <h3 style={{ margin: 0 }}>物品列表</h3>
-                    <Button
-                        startIcon={<AddIcon />}
+                    <IconButton
                         onClick={handleAddItem}
-                        variant="contained"
-                        size="small"
+                        color="primary"
                     >
-                        添加
-                    </Button>
+                        <AddIcon />
+                    </IconButton>
                 </Box>
                 <List>
                     {items.map((item) => (
@@ -203,13 +201,12 @@ function ItemEditor({ items, root }: ItemEditorProps) {
                             onClick={() => setSelectedItem(item)}
                         >
                             <ListItemText primary={`${item.id}: ${item.name}`} />
-                            <Button
+                            <IconButton
                                 size="small"
-                                color="error"
                                 onClick={(e) => handleDeleteItem(item, e)}
                             >
                                 <DeleteIcon />
-                            </Button>
+                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>

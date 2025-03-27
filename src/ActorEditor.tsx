@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2 } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Grid2, IconButton } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import GameData, { Actor } from './GameData';
@@ -210,13 +210,11 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         const items = updatedActor[editingField.type] as { key: string, value: number }[];
 
         if (editingField.originalKey) {
-            // 编辑现有项
             const index = items.findIndex(item => item.key === editingField.originalKey);
             if (index !== -1) {
                 items[index] = { key: editingField.key, value: editingField.value };
             }
         } else {
-            // 添加新项
             items.push({ key: editingField.key, value: editingField.value });
         }
 
@@ -229,14 +227,12 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <h3 style={{ margin: 0 }}>{title}</h3>
-                <Button
-                    startIcon={<AddIcon />}
+                <IconButton
                     onClick={() => handleAdd(type)}
-                    variant="contained"
-                    size="small"
+                    color="primary"
                 >
-                    添加
-                </Button>
+                    <AddIcon />
+                </IconButton>
             </Box>
             <DragDropContext
                 onDragEnd={(result) => handleDragEnd(result, type)}
@@ -267,16 +263,15 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                                     }
                                                 />
                                             </Box>
-                                            <Button
+                                            <IconButton
                                                 size="small"
-                                                color="error"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDelete(type, item.key);
                                                 }}
                                             >
                                                 <DeleteIcon />
-                                            </Button>
+                                            </IconButton>
                                         </ListItemButton>
                                     )}
                                 </Draggable>
@@ -387,14 +382,12 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <h3 style={{ margin: 0 }}>装备槽</h3>
-                <Button
-                    startIcon={<AddIcon />}
+                <IconButton
                     onClick={handleAddEquipSlot}
-                    variant="contained"
-                    size="small"
+                    color="primary"
                 >
-                    添加
-                </Button>
+                    <AddIcon />
+                </IconButton>
             </Box>
             <DragDropContext onDragEnd={handleEquipSlotDragEnd}>
                 <Droppable droppableId="equip-slots">
@@ -415,16 +408,15 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                                 </Box>
                                                 <ListItemText primary={slot} />
                                             </Box>
-                                            <Button
+                                            <IconButton
                                                 size="small"
-                                                color="error"
                                                 onClick={(e) => {
                                                     e.stopPropagation();
                                                     handleDeleteEquipSlot(index);
                                                 }}
                                             >
                                                 <DeleteIcon />
-                                            </Button>
+                                            </IconButton>
                                         </ListItemButton>
                                     )}
                                 </Draggable>
@@ -472,14 +464,12 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             <Paper sx={{ width: '200px', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <h3 style={{ margin: 0 }}>角色列表</h3>
-                    <Button
-                        startIcon={<AddIcon />}
+                    <IconButton
                         onClick={handleAddActor}
-                        variant="contained"
-                        size="small"
+                        color="primary"
                     >
-                        添加
-                    </Button>
+                        <AddIcon />
+                    </IconButton>
                 </Box>
                 <List>
                     {actors.map((actor) => (
@@ -489,13 +479,12 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                             onClick={() => setSelectedActor(actor)}
                         >
                             <ListItemText primary={`${actor.id}: ${actor.name}`} />
-                            <Button
+                            <IconButton
                                 size="small"
-                                color="error"
                                 onClick={(e) => handleDeleteActor(actor, e)}
                             >
                                 <DeleteIcon />
-                            </Button>
+                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>

@@ -66,6 +66,15 @@ export interface Enemy {
     items: { id: number, number: number }[];
 }
 
+export interface Tilemap {
+    id: number;
+    name: string;
+    file: string;
+    walkable: boolean[][];
+    collisionFlags: { up: boolean, left: boolean, down: boolean, right: boolean }[][];
+    events: number[][];
+}
+
 export class GameDataRecorder {
     private root: string;
     private config: Config;
@@ -73,6 +82,7 @@ export class GameDataRecorder {
     private itemsInfo: Item [];
     private equipInfo: Equip [];
     private enemyInfo: Enemy[];
+    private tilemapsInfo: Tilemap[];
 
     constructor() {
         this.root = "";
@@ -103,6 +113,7 @@ export class GameDataRecorder {
         this.itemsInfo = [];
         this.equipInfo = [];
         this.enemyInfo = [];
+        this.tilemapsInfo = [];
     }
 
     getRoot() {
@@ -201,6 +212,22 @@ export class GameDataRecorder {
         this.enemyInfo = enemyInfo;
     }
 
+    getAllTilemapInfo() {
+        return this.tilemapsInfo;
+    }
+
+    getTilemapInfo(id: number) {
+        return this.tilemapsInfo[id];
+    }
+
+    setTilemapInfo(id: number, tilemapInfo: Tilemap) {
+        this.tilemapsInfo[id] = tilemapInfo;
+    }
+
+    setAllTilemapInfo(tilemapInfo: Tilemap[]) {
+        this.tilemapsInfo = tilemapInfo;
+    }
+
     getCopyToAllData() {
         const data = new GameDataRecorder();
         data.setRoot(this.root);
@@ -228,6 +255,12 @@ export class GameDataRecorder {
             attr: enemy.attr.map(attr => ({...attr })),
             drop: enemy.drop.map(drop => ({...drop })),
             items: enemy.items.map(item => ({...item }))
+        })))
+        data.setAllTilemapInfo(this.tilemapsInfo.map(tilemap => ({
+            ...tilemap,
+            walkable: tilemap.walkable.map(row => [...row]),
+            collisionFlags: tilemap.collisionFlags.map(row => [...row]),
+            events: tilemap.events.map(row => [...row])
         })))
         return data;
     }

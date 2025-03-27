@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2 } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -267,14 +267,12 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
             <Paper sx={{ width: '200px', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <h3 style={{ margin: 0 }}>装备列表</h3>
-                    <Button
-                        startIcon={<AddIcon />}
+                    <IconButton
                         onClick={handleAddEquip}
-                        variant="contained"
-                        size="small"
+                        color="primary"
                     >
-                        添加
-                    </Button>
+                        <AddIcon />
+                    </IconButton>
                 </Box>
                 <List>
                     {equips.map((equip) => (
@@ -284,13 +282,12 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                             onClick={() => setSelectedEquip(equip)}
                         >
                             <ListItemText primary={`${equip.id}: ${equip.name}`} />
-                            <Button
+                            <IconButton
                                 size="small"
-                                color="error"
                                 onClick={(e) => handleDeleteEquip(equip, e)}
                             >
                                 <DeleteIcon />
-                            </Button>
+                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
@@ -376,14 +373,12 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                         <h3 style={{ margin: 0 }}>属性加成</h3>
-                                        <Button
-                                            startIcon={<AddIcon />}
+                                        <IconButton
                                             onClick={handleAdd}
-                                            variant="contained"
-                                            size="small"
+                                            color="primary"
                                         >
-                                            添加
-                                        </Button>
+                                            <AddIcon />
+                                        </IconButton>
                                     </Box>
                                     <DragDropContext onDragEnd={handleDragEnd}>
                                         <Droppable droppableId="attr_plus">
@@ -404,16 +399,15 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                                                                         </Box>
                                                                         <ListItemText primary={`${item.key}: ${item.value}`} />
                                                                     </Box>
-                                                                    <Button
+                                                                    <IconButton
                                                                         size="small"
-                                                                        color="error"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             handleDelete(item.key);
                                                                         }}
                                                                     >
                                                                         <DeleteIcon />
-                                                                    </Button>
+                                                                    </IconButton>
                                                                 </ListItemButton>
                                                             )}
                                                         </Draggable>

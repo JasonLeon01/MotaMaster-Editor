@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2 } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -390,14 +390,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
             <Paper sx={{ width: '200px', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <h3 style={{ margin: 0 }}>敌人列表</h3>
-                    <Button
-                        startIcon={<AddIcon />}
+                    <IconButton
                         onClick={handleAddEnemy}
-                        variant="contained"
-                        size="small"
+                        color="primary"
                     >
-                        添加
-                    </Button>
+                        <AddIcon />
+                    </IconButton>
                 </Box>
                 <List>
                     {enemies.map((enemy) => (
@@ -407,13 +405,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                             onClick={() => setSelectedEnemy(enemy)}
                         >
                             <ListItemText primary={`${enemy.id}: ${enemy.name}`} />
-                            <Button
+                            <IconButton
                                 size="small"
-                                color="error"
                                 onClick={(e) => handleDeleteEnemy(enemy, e)}
                             >
                                 <DeleteIcon />
-                            </Button>
+                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
@@ -455,14 +452,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                         <h3 style={{ margin: 0 }}>能力值</h3>
-                                        <Button
-                                            startIcon={<AddIcon />}
+                                        <IconButton
                                             onClick={handleAddAttr}
-                                            variant="contained"
-                                            size="small"
+                                            color="primary"
                                         >
-                                            添加
-                                        </Button>
+                                            <AddIcon />
+                                        </IconButton>
                                     </Box>
                                     <DragDropContext onDragEnd={handleAttrDragEnd}>
                                         <Droppable droppableId="attr">
@@ -483,16 +478,15 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                                         </Box>
                                                                         <ListItemText primary={`${item.key}: ${item.value}`} />
                                                                     </Box>
-                                                                    <Button
+                                                                    <IconButton
                                                                         size="small"
-                                                                        color="error"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             handleDeleteAttr(item.key);
                                                                         }}
                                                                     >
                                                                         <DeleteIcon />
-                                                                    </Button>
+                                                                    </IconButton>
                                                                 </ListItemButton>
                                                             )}
                                                         </Draggable>
@@ -508,14 +502,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                         <h3 style={{ margin: 0 }}>掉落物</h3>
-                                        <Button
-                                            startIcon={<AddIcon />}
+                                        <IconButton
                                             onClick={handleAddDrop}
-                                            variant="contained"
-                                            size="small"
+                                            color="primary"
                                         >
-                                            添加
-                                        </Button>
+                                            <AddIcon />
+                                        </IconButton>
                                     </Box>
                                     <DragDropContext onDragEnd={handleDropDragEnd}>
                                         <Droppable droppableId="drop">
@@ -536,16 +528,15 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                                         </Box>
                                                                         <ListItemText primary={`${item.key}: ${item.value}`} />
                                                                     </Box>
-                                                                    <Button
+                                                                    <IconButton
                                                                         size="small"
-                                                                        color="error"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             handleDeleteDrop(item.key);
                                                                         }}
                                                                     >
                                                                         <DeleteIcon />
-                                                                    </Button>
+                                                                    </IconButton>
                                                                 </ListItemButton>
                                                             )}
                                                         </Draggable>
@@ -561,14 +552,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                                         <h3 style={{ margin: 0 }}>掉落道具</h3>
-                                        <Button
-                                            startIcon={<AddIcon />}
+                                        <IconButton
                                             onClick={handleAddItem}
-                                            variant="contained"
-                                            size="small"
+                                            color="primary"
                                         >
-                                            添加
-                                        </Button>
+                                            <AddIcon />
+                                        </IconButton>
                                     </Box>
                                     <DragDropContext onDragEnd={handleItemDragEnd}>
                                         <Droppable droppableId="items">
@@ -589,16 +578,15 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                                         </Box>
                                                                         <ListItemText primary={`${getItemName(item.id)} x${item.number}`} />
                                                                     </Box>
-                                                                    <Button
+                                                                    <IconButton
                                                                         size="small"
-                                                                        color="error"
                                                                         onClick={(e) => {
                                                                             e.stopPropagation();
                                                                             handleDeleteItem(item.id);
                                                                         }}
                                                                     >
                                                                         <DeleteIcon />
-                                                                    </Button>
+                                                                    </IconButton>
                                                                 </ListItemButton>
                                                             )}
                                                         </Draggable>

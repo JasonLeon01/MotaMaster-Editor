@@ -2,12 +2,13 @@ import { useEffect, useState, useCallback } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, ListItem, ListItemIcon } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Config, Actor, Item, Equip, GameDataRecorder, Enemy } from './GameData'
+import GameData, { Config, Actor, Item, Equip, GameDataRecorder, Enemy, Tilemap } from './GameData'
 import ActorEditor from './ActorEditor';
 import ItemEditor from 'ItemEditor'
 import EquipEditor from './EquipEditor';
 import Hint from 'utils/uHint'
 import EnemyEditor from 'EnemyEditor'
+import TilemapEditor from 'TilemapEditor'
 const fs = window.require('fs');
 const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
@@ -42,6 +43,7 @@ function App() {
         loadItems(data.path);
         loadEquips(data.path);
         loadEnemies(data.path);
+        loadTilemaps(data.path);
         const origin = GameData.getCopyToAllData();
         setOriginalData(origin);
         setRefreshKey(prev => prev + 1);
@@ -157,9 +159,27 @@ function App() {
           enemyList.push(enemy);
           GameData.setEnemyInfo(enemy.id, enemy);
         }
-      })
+      });
     } catch (error) {
       console.error('Failed to load enemies:', error);
+    }
+  }
+
+  const loadTilemaps = (rootPath: string) => {
+    const tilemapsPath = path.join(rootPath, 'data', 'tilemaps');
+    try {
+      const files = fs.readdirSync(tilemapsPath);
+      const tilemapList: Tilemap[] = [];
+      files.forEach((file: string) => {
+        if (file.endsWith('.json')) {
+          const data = fs.readFileSync(path.join(tilemapsPath, file), 'utf8');
+          const tilemap = JSON.parse(data);
+          tilemapList.push(tilemap);
+          GameData.setTilemapInfo(tilemap.id, tilemap);
+        }
+      });
+    } catch (error) {
+      console.error('Failed to load tilemaps:', error);
     }
   }
 
@@ -246,6 +266,24 @@ function App() {
         changes.push({ type: 'enemy', id: enemy.id, name: enemy.name });
       }
     });
+
+    const currentTilemaps = GameData.getAllTilemapInfo().filter(t => t && t.id!== undefined);
+    const originalTilemaps = originalData.getAllTilemapInfo().filter(t => t && t.id!== undefined);
+
+    originalTilemaps.forEach(originalTilemap => {
+      if (originalTilemap && originalTilemap.id!= undefined &&!currentTilemaps.find(t => t.id === originalTilemap.id)) {
+        changes.push({ type: 'tilemap', id: originalTilemap.id, name: `${originalTilemap.name}(-)` });
+      }
+    });
+
+    currentTilemaps.forEach(tilemap => {
+      const originalTilemap = originalData.getTilemapInfo(tilemap.id);
+      if (!originalTilemap) {
+        changes.push({ type: 'tilemap', id: tilemap.id, name: `${tilemap.name}(+)` });
+      } else if (JSON.stringify(originalTilemap)!== JSON.stringify(tilemap)) {
+        changes.push({ type: 'tilemap', id: tilemap.id, name: tilemap.name });
+      }
+    })
 
     if (changes.length === 0) {
       setSnackbar({
@@ -387,7 +425,7 @@ function App() {
               attr: enemy.attr.reduce((obj, item) => ({
                ...obj,
                 [item.key]: item.value
-              })),
+              }), {}),
               drop: enemy.drop.reduce((obj, item) => ({
               ...obj,
                 [item.key]: item.value
@@ -397,6 +435,28 @@ function App() {
             fs.writeFileSync(
               path.join(rootPath, 'data', 'enemies', `enemy_${enemy.id}.json`),
               JSON.stringify(saveEnemy)
+            );
+          }
+        });
+      }
+
+      const tilemapChanges = selectedChanges.filter(change => change.type === 'tilemap');
+      if (tilemapChanges.length > 0) {
+        tilemapChanges.forEach(change => {
+          if (change.name.endsWith('(-)')) {
+            const filePath = path.join(rootPath, 'data', 'tilemaps', `tilemap_${change.id}.json`);
+            console.log('Deleting tilemap file:', filePath);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          }
+        });
+        const currentTilemaps = GameData.getAllTilemapInfo().filter(t => t && t.id!== undefined);
+        currentTilemaps.forEach(tilemap => {
+          if (tilemapChanges.some(change => change.id === tilemap.id &&!change.name.endsWith('(-)'))) {
+            fs.writeFileSync(
+              path.join(rootPath, 'data', 'tilemaps', `tilemap_${tilemap.id}.json`),
+              JSON.stringify(tilemap)
             );
           }
         });
@@ -446,23 +506,29 @@ function App() {
           root={GameData.getRoot()}
         />;
       case 2:
-          return <ItemEditor
-              key={refreshKey}
-              items={GameData.getAllItemInfo()}
-              root={GameData.getRoot()}
-          />;
+        return <ItemEditor
+          key={refreshKey}
+          items={GameData.getAllItemInfo()}
+          root={GameData.getRoot()}
+        />;
       case 3:
-          return <EquipEditor
-              key={refreshKey}
-              equips={GameData.getAllEquipInfo()}
-              root={GameData.getRoot()}
-          />;
+        return <EquipEditor
+          key={refreshKey}
+          equips={GameData.getAllEquipInfo()}
+          root={GameData.getRoot()}
+        />;
       case 4:
-          return <EnemyEditor
-              key={refreshKey}
-              enemies={GameData.getAllEnemyInfo()}
-              root={GameData.getRoot()}
-          />;
+        return <EnemyEditor
+          key={refreshKey}
+          enemies={GameData.getAllEnemyInfo()}
+          root={GameData.getRoot()}
+        />;
+      case 5:
+        return <TilemapEditor
+          key={refreshKey}
+          tilemaps={GameData.getAllTilemapInfo()}
+          root={GameData.getRoot()}
+        />;
       case 8:
         return <SystemSetting
           key={refreshKey}
@@ -538,6 +604,7 @@ function App() {
                     change.type === 'item' ? '物品' :
                     change.type === 'equip'? '装备' :
                     change.type === 'enemy'? '敌人' :
+                    change.type === 'tilemap'? '地图' :
                     '未知'})`}
                 />
               </ListItem>
