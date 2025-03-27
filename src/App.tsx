@@ -92,7 +92,7 @@ function App() {
         if (file.endsWith('.json')) {
           const data = fs.readFileSync(path.join(actorsPath, file), 'utf8');
           const actor = JSON.parse(data);
-          actor.attributes = Object.entries(actor.attributes).map(([key, value]) => ({ key, value }));
+          actor.attr = Object.entries(actor.attr).map(([key, value]) => ({ key, value }));
           actor.wealth = Object.entries(actor.wealth).map(([key, value]) => ({ key, value }));
           actor.items = Object.entries(actor.items).map(([key, value]) => ({ key, value }));
           actorList.push(actor);
@@ -148,28 +148,61 @@ function App() {
   const handleSaveProject = useCallback(() => {
     if (!originalData) return;
     const changes: { type: string; id: number; name: string }[] = [];
-    
+
     if (JSON.stringify(originalData.getConfig()) !== JSON.stringify(GameData.getConfig())) {
       changes.push({ type: 'config', id: -1, name: '系统配置' });
     }
 
-    GameData.getAllActorInfo().forEach(actor => {
+    const currentActors = GameData.getAllActorInfo().filter(a => a && a.id !== undefined);
+    const originalActors = originalData.getAllActorInfo().filter(a => a && a.id !== undefined);
+
+    originalActors.forEach(originalActor => {
+      if (originalActor && originalActor.id != undefined && !currentActors.find(a => a.id === originalActor.id)) {
+        changes.push({ type: 'actor', id: originalActor.id, name: `${originalActor.name}(-)` });
+      }
+    });
+
+    currentActors.forEach(actor => {
       const originalActor = originalData.getActorInfo(actor.id);
-      if (JSON.stringify(originalActor) !== JSON.stringify(actor)) {
+      if (!originalActor) {
+        changes.push({ type: 'actor', id: actor.id, name: `${actor.name}(+)` });
+      } else if (JSON.stringify(originalActor) !== JSON.stringify(actor)) {
         changes.push({ type: 'actor', id: actor.id, name: actor.name });
       }
     });
 
-    GameData.getAllItemInfo().forEach(item => {
+    const currentItems = GameData.getAllItemInfo().filter(i => i && i.id !== undefined);
+    const originalItems = originalData.getAllItemInfo().filter(i => i && i.id !== undefined);
+
+    originalItems.forEach(originalItem => {
+      if (originalItem && originalItem.id !=undefined && !currentItems.find(i => i.id === originalItem.id)) {
+        changes.push({ type: 'item', id: originalItem.id, name: `${originalItem.name}(-))` });
+      }
+    });
+
+    currentItems.forEach(item => {
       const originalItem = originalData.getItemInfo(item.id);
-      if (JSON.stringify(originalItem) !== JSON.stringify(item)) {
+      if (!originalItem) {
+        changes.push({ type: 'item', id: item.id, name: `${item.name}(+)` });
+      } else if (JSON.stringify(originalItem) !== JSON.stringify(item)) {
         changes.push({ type: 'item', id: item.id, name: item.name });
       }
     });
 
-    GameData.getAllEquipInfo().forEach(equip => {
+    const currentEquips = GameData.getAllEquipInfo().filter(e => e && e.id !== undefined);
+    const originalEquips = originalData.getAllEquipInfo().filter(e => e && e.id !== undefined);
+
+    originalEquips.forEach(originalEquip => {
+      if (originalEquip && originalEquip.id != undefined && !currentEquips.find(e => e.id === originalEquip.id)) {
+        changes.push({ type: 'equip', id: originalEquip.id, name: `${originalEquip.name}(-)` });
+      }
+    });
+
+    currentEquips.forEach(equip => {
       const originalEquip = originalData.getEquipInfo(equip.id);
-      if (JSON.stringify(originalEquip) !== JSON.stringify(equip)) {
+      if (!originalEquip) {
+        changes.push({ type: 'equip', id: equip.id, name: `${equip.name}(+)` });
+      } else if (JSON.stringify(originalEquip) !== JSON.stringify(equip)) {
         changes.push({ type: 'equip', id: equip.id, name: equip.name });
       }
     });
@@ -205,60 +238,96 @@ function App() {
         );
       }
 
-      selectedChanges.filter(change => change.type === 'actor').forEach(change => {
-        const actor = GameData.getActorInfo(change.id);
-        if (actor) {
-          const saveActor = {
-            ...actor,
-            attributes: actor.attributes.reduce((obj, item) => ({
-              ...obj,
-              [item.key]: item.value
-            }), {}),
-            wealth: actor.wealth.reduce((obj, item) => ({
-              ...obj,
-              [item.key]: item.value
-            }), {}),
-            items: actor.items.reduce((obj, item) => ({
-              ...obj,
-              [item.key]: item.value
-            }), {})
-          };
-          
-          fs.writeFileSync(
-            path.join(rootPath, 'data', 'actors', `actor_${actor.id}.json`),
-            JSON.stringify(saveActor, null, 2)
-          );
-        }
-      });
+      const actorChanges = selectedChanges.filter(change => change.type === 'actor');
+      if (actorChanges.length > 0) {
+        actorChanges.forEach(change => {
+          if (change.name.endsWith('(-)')) {
+            const filePath = path.join(rootPath, 'data', 'actors', `actor_${change.id}.json`);
+            console.log('Deleting actor file:', filePath);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          }
+        });
+        const currentActors = GameData.getAllActorInfo().filter(a => a && a.id !== undefined);
+        currentActors.forEach(actor => {
+          if (actorChanges.some(change => change.id === actor.id && !change.name.endsWith('(-)'))) {
+            const saveActor = {
+              ...actor,
+              attr: actor.attr.reduce((obj, item) => ({
+                ...obj,
+                [item.key]: item.value
+              }), {}),
+              wealth: actor.wealth.reduce((obj, item) => ({
+                ...obj,
+                [item.key]: item.value
+              }), {}),
+              items: actor.items.reduce((obj, item) => ({
+                ...obj,
+                [item.key]: item.value
+              }), {})
+            };
 
-      selectedChanges.filter(change => change.type === 'item').forEach(change => {
-        const item = GameData.getItemInfo(change.id);
-        if (item) {
-          fs.writeFileSync(
-            path.join(rootPath, 'data', 'items', `item_${item.id}.json`),
-            JSON.stringify(item, null, 2)
-          );
-        }
-      });
+            fs.writeFileSync(
+              path.join(rootPath, 'data', 'actors', `actor_${actor.id}.json`),
+              JSON.stringify(saveActor, null, 2)
+            );
+          }
+        });
+      }
 
-      selectedChanges.filter(change => change.type === 'equip').forEach(change => {
-        const equip = GameData.getEquipInfo(change.id);
-        if (equip) {
-          const saveEquip = {
-            ...equip,
-            attr_plus: equip.attr_plus.reduce((obj, item) => ({
-              ...obj,
-              [item.key]: item.value
-            }), {})
-          };
+      const itemChanges = selectedChanges.filter(change => change.type === 'item');
+      if (itemChanges.length > 0) {
+        itemChanges.forEach(change => {
+          if (change.name.endsWith('(-)')) {
+            const filePath = path.join(rootPath, 'data', 'items', `item_${change.id}.json`);
+            console.log('Deleting item file:', filePath);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          }
+        });
+        const currentItems = GameData.getAllItemInfo().filter(i => i && i.id !== undefined);
+        currentItems.forEach(item => {
+          if (itemChanges.some(change => change.id === item.id && !change.name.endsWith('(-)'))) {
+            fs.writeFileSync(
+              path.join(rootPath, 'data', 'items', `item_${item.id}.json`),
+              JSON.stringify(item, null, 2)
+            );
+          }
+        });
+      }
 
-          fs.writeFileSync(
-            path.join(rootPath, 'data', 'equips', `equip_${equip.id}.json`),
-            JSON.stringify(saveEquip, null, 2)
-          );
-        }
-      });
+      const equipChanges = selectedChanges.filter(change => change.type === 'equip');
+      if (equipChanges.length > 0) {
+        // 处理删除的装备
+        equipChanges.forEach(change => {
+          if (change.name.endsWith('(-)')) {
+            const filePath = path.join(rootPath, 'data', 'equips', `equip_${change.id}.json`);
+            console.log('Deleting equip file:', filePath);
+            if (fs.existsSync(filePath)) {
+              fs.unlinkSync(filePath);
+            }
+          }
+        });
+        const currentEquips = GameData.getAllEquipInfo().filter(e => e && e.id !== undefined);
+        currentEquips.forEach(equip => {
+          if (equipChanges.some(change => change.id === equip.id && !change.name.endsWith('(-)'))) {
+            const saveEquip = {
+              ...equip,
+              attr_plus: equip.attr_plus.reduce((obj, item) => ({
+                ...obj,
+                [item.key]: item.value
+              }), {})
+            };
 
+            fs.writeFileSync(
+              path.join(rootPath, 'data', 'equips', `equip_${equip.id}.json`),
+              JSON.stringify(saveEquip, null, 2)
+            );
+          }
+        });
+      }
 
       setOriginalData(GameData.getCopyToAllData());
       setSnackbar({
@@ -384,10 +453,10 @@ function App() {
                     onChange={() => handleToggle(change)}
                   />
                 </ListItemIcon>
-                <ListItemText 
-                  primary={`${change.name} (${change.type === 'config' ? '配置' : 
-                    change.type === 'actor' ? '角色' : 
-                    change.type === 'item' ? '物品' : '装备'})`} 
+                <ListItemText
+                  primary={`${change.name} (${change.type === 'config' ? '配置' :
+                    change.type === 'actor' ? '角色' :
+                    change.type === 'item' ? '物品' : '装备'})`}
                 />
               </ListItem>
             ))}

@@ -7,7 +7,7 @@ interface DoubleInputProps {
     dialogOpen: boolean;
     handleOnClose: () => void;
     editingField: {
-        type: 'attributes' | 'wealth' | 'items',
+        type: 'attr' | 'wealth' | 'items',
         key: string,
         originalKey: string,
         value: number

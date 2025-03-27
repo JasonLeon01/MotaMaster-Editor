@@ -443,7 +443,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                 mapValueName="属性值"
                 dialogOpen={dialogOpen}
                 handleOnClose={() => setDialogOpen(false)}
-                editingField={editingField ? { type: 'attributes', ...editingField } : null}
+                editingField={editingField ? { type: 'attr', ...editingField } : null}
                 handleKeyOnChange={(e) => setEditingField(prev => prev ? { ...prev, key: e.target.value } : null)}
                 handleValueOnChange={(e) => setEditingField(prev => prev ? { ...prev, value: Number(e.target.value) } : null)}
                 handleSave={handleSave}

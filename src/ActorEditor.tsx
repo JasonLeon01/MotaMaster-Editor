@@ -20,7 +20,7 @@ interface ActorEditorProps {
 function ActorEditor({ actors, root }: ActorEditorProps) {
     const [selectedActor, setSelectedActor] = useState<Actor | null>(null);
     const [editingField, setEditingField] = useState<{
-        type: 'attributes' | 'wealth' | 'items',
+        type: 'attr' | 'wealth' | 'items',
         key: string,
         originalKey: string,
         value: number
@@ -61,8 +61,15 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             id: newId,
             name: newActorName,
             file: '',
-            attributes: [],
-            wealth: [],
+            attr: [
+                { key: 'level', value: 1 },
+                { key: 'hp', value: 1000 },
+                { key: 'atk', value: 10 },
+                { key: 'def', value: 10 }
+            ],
+            wealth: [
+                { key: 'gold', value: 0 }
+            ],
             items: [],
             equip_slot: [],
             equip: [],
@@ -108,7 +115,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         setSelectedActor(updated);
     };
 
-    const handleDragEnd = (result: DropResult, type: 'attributes' | 'wealth' | 'items') => {
+    const handleDragEnd = (result: DropResult, type: 'attr' | 'wealth' | 'items') => {
         if (!result.destination || !selectedActor) return;
 
         const items = [...selectedActor[type]];
@@ -120,7 +127,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         actors[updatedActor.id] = updatedActor;
     };
 
-    const handleEditField = (type: 'attributes' | 'wealth' | 'items', key: string, value: number) => {
+    const handleEditField = (type: 'attr' | 'wealth' | 'items', key: string, value: number) => {
         setEditingField({
             type,
             key,
@@ -128,7 +135,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             value
         });
         setDialogOpen(true);
-        if (type === 'attributes') {
+        if (type === 'attr') {
             setMapName("编辑属性");
             setMapKeyName("属性名");
             setMapValueName("属性值");
@@ -145,7 +152,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         }
     };
 
-    const handleDelete = (type: 'attributes' | 'wealth' | 'items', key: string) => {
+    const handleDelete = (type: 'attr' | 'wealth' | 'items', key: string) => {
         if (!selectedActor) return;
 
         const updatedActor = { ...selectedActor };
@@ -158,7 +165,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         }
     };
 
-    const handleAdd = (type: 'attributes' | 'wealth' | 'items') => {
+    const handleAdd = (type: 'attr' | 'wealth' | 'items') => {
         setEditingField({
             type,
             key: '',
@@ -166,7 +173,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             value: 0
         });
         setDialogOpen(true);
-        if (type === 'attributes') {
+        if (type === 'attr') {
             setMapName("编辑属性");
         }
         else if (type === 'wealth') {
@@ -217,7 +224,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         setDialogOpen(false);
     };
 
-    const renderMapEditor = (title: string, items: { key: string, value: number }[], type: 'attributes' | 'wealth' | 'items') => (
+    const renderMapEditor = (title: string, items: { key: string, value: number }[], type: 'attr' | 'wealth' | 'items') => (
         <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
                 <h3 style={{ margin: 0 }}>{title}</h3>
@@ -312,10 +319,10 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
 
         const items = [...selectedActor.equip_slot];
         const equips = [...selectedActor.equip];
-        
+
         const [reorderedSlot] = items.splice(result.source.index, 1);
         const [reorderedEquip] = equips.splice(result.source.index, 1);
-        
+
         items.splice(result.destination.index, 0, reorderedSlot);
         equips.splice(result.destination.index, 0, reorderedEquip);
 
@@ -340,7 +347,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         if (!selectedActor || !newEquipSlot.trim()) return;
 
         const updatedActor = { ...selectedActor };
-        
+
         if (editingEquipSlotIndex !== null) {
             updatedActor.equip_slot[editingEquipSlotIndex] = newEquipSlot;
             updatedActor.equip[editingEquipSlotIndex] = 0;
@@ -348,7 +355,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             updatedActor.equip_slot.push(newEquipSlot);
             updatedActor.equip.push(0);
         }
-        
+
         setSelectedActor(updatedActor);
         actors[updatedActor.id] = updatedActor;
         setEquipSlotDialog(false);
@@ -360,7 +367,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         const updatedActor = { ...selectedActor };
         updatedActor.equip_slot.splice(index, 1);
         updatedActor.equip.splice(index, 1);
-        
+
         setSelectedActor(updatedActor);
         actors[updatedActor.id] = updatedActor;
     };
@@ -370,7 +377,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
 
         const updatedActor = { ...selectedActor };
         updatedActor.equip[index] = value;
-        
+
         setSelectedActor(updatedActor);
         actors[updatedActor.id] = updatedActor;
     };
@@ -431,7 +438,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
 
     const renderInitialEquips = () => {
         const allEquips = GameData.getAllEquipInfo();
-        
+
         return (
             <Paper sx={{ p: 2, mb: 2 }}>
                 <h3>初始装备</h3>
@@ -443,7 +450,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                 value: equip.id,
                                 label: `${equip.id}: ${equip.name}`
                             }));
-    
+
                         return (
                             <ComboBox
                                 key={`${slot}-${index}`}
@@ -539,7 +546,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                             </Paper>
                         </Grid2>
                     </Grid2>
-                    {renderMapEditor('属性', selectedActor.attributes, 'attributes')}
+                    {renderMapEditor('属性', selectedActor.attr, 'attr')}
                     {renderMapEditor('财富', selectedActor.wealth, 'wealth')}
                     {renderMapEditor('物品', selectedActor.items, 'items')}
                     {renderEquipSlots()}

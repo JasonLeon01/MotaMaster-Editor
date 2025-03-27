@@ -26,7 +26,7 @@ export interface Actor {
     id: number;
     name: string;
     file: string;
-    attributes: { key: string, value: number }[];  // 改为数组形式
+    attr: { key: string, value: number }[];
     wealth: { key: string, value: number }[];
     items: { key: string, value: number }[];
     equip_slot: string[];
@@ -178,7 +178,7 @@ export class GameDataRecorder {
         data.setConfig(JSON.parse(JSON.stringify(this.config)));
         data.setAllActorInfo(this.actorsInfo.map(actor => ({
             ...actor,
-            attributes: actor.attributes.map(attr => ({ ...attr })),
+            attr: actor.attr.map(attr => ({ ...attr })),
             wealth: actor.wealth.map(w => ({ ...w })),
             items: actor.items.map(item => ({ ...item })),
             equip_slot: [...actor.equip_slot],
