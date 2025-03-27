@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import FileSelector from './utils/FileSelector';
 import DoubleInput from 'utils/DoubleInput';
 import SingleInput from 'utils/SingleInput';
+import ComboBox from 'utils/ComboBox';
 const path = window.require('path');
 
 interface ActorEditorProps {
@@ -36,6 +37,9 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
     const [mapName, setMapName] = useState('');
     const [mapKeyName, setMapKeyName] = useState('');
     const [mapValueName, setMapValueName] = useState('');
+    const [equipSlotDialog, setEquipSlotDialog] = useState(false);
+    const [newEquipSlot, setNewEquipSlot] = useState('');
+    const [editingEquipSlotIndex, setEditingEquipSlotIndex] = useState<number | null>(null);
 
     const handleAddActor = () => {
         setNewActorName('');
@@ -303,6 +307,158 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         setSelectedActor(updated);
     };
 
+    const handleEquipSlotDragEnd = (result: DropResult) => {
+        if (!result.destination || !selectedActor) return;
+
+        const items = [...selectedActor.equip_slot];
+        const equips = [...selectedActor.equip];
+        
+        const [reorderedSlot] = items.splice(result.source.index, 1);
+        const [reorderedEquip] = equips.splice(result.source.index, 1);
+        
+        items.splice(result.destination.index, 0, reorderedSlot);
+        equips.splice(result.destination.index, 0, reorderedEquip);
+
+        const updatedActor = { ...selectedActor, equip_slot: items, equip: equips };
+        setSelectedActor(updatedActor);
+        actors[updatedActor.id] = updatedActor;
+    };
+
+    const handleAddEquipSlot = () => {
+        setNewEquipSlot('');
+        setEditingEquipSlotIndex(null);
+        setEquipSlotDialog(true);
+    };
+
+    const handleEditEquipSlot = (slot: string, index: number) => {
+        setNewEquipSlot(slot);
+        setEditingEquipSlotIndex(index);
+        setEquipSlotDialog(true);
+    };
+
+    const handleSaveEquipSlot = () => {
+        if (!selectedActor || !newEquipSlot.trim()) return;
+
+        const updatedActor = { ...selectedActor };
+        
+        if (editingEquipSlotIndex !== null) {
+            updatedActor.equip_slot[editingEquipSlotIndex] = newEquipSlot;
+            updatedActor.equip[editingEquipSlotIndex] = 0;
+        } else {
+            updatedActor.equip_slot.push(newEquipSlot);
+            updatedActor.equip.push(0);
+        }
+        
+        setSelectedActor(updatedActor);
+        actors[updatedActor.id] = updatedActor;
+        setEquipSlotDialog(false);
+    };
+
+    const handleDeleteEquipSlot = (index: number) => {
+        if (!selectedActor) return;
+
+        const updatedActor = { ...selectedActor };
+        updatedActor.equip_slot.splice(index, 1);
+        updatedActor.equip.splice(index, 1);
+        
+        setSelectedActor(updatedActor);
+        actors[updatedActor.id] = updatedActor;
+    };
+
+    const handleEquipChange = (index: number, value: number) => {
+        if (!selectedActor) return;
+
+        const updatedActor = { ...selectedActor };
+        updatedActor.equip[index] = value;
+        
+        setSelectedActor(updatedActor);
+        actors[updatedActor.id] = updatedActor;
+    };
+
+    const renderEquipSlots = () => (
+        <Paper sx={{ p: 2, mb: 2 }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <h3 style={{ margin: 0 }}>装备槽</h3>
+                <Button
+                    startIcon={<AddIcon />}
+                    onClick={handleAddEquipSlot}
+                    variant="contained"
+                    size="small"
+                >
+                    添加
+                </Button>
+            </Box>
+            <DragDropContext onDragEnd={handleEquipSlotDragEnd}>
+                <Droppable droppableId="equip-slots">
+                    {(provided) => (
+                        <List {...provided.droppableProps} ref={provided.innerRef}>
+                            {selectedActor?.equip_slot.map((slot, index) => (
+                                <Draggable key={`${slot}-${index}`} draggableId={`${slot}-${index}`} index={index}>
+                                    {(provided) => (
+                                        <ListItemButton
+                                            ref={provided.innerRef}
+                                            {...provided.draggableProps}
+                                            onClick={() => handleEditEquipSlot(slot, index)}
+                                            sx={{ display: 'flex', justifyContent: 'space-between' }}
+                                        >
+                                            <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                    <DragIndicatorIcon />
+                                                </Box>
+                                                <ListItemText primary={slot} />
+                                            </Box>
+                                            <Button
+                                                size="small"
+                                                color="error"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleDeleteEquipSlot(index);
+                                                }}
+                                            >
+                                                <DeleteIcon />
+                                            </Button>
+                                        </ListItemButton>
+                                    )}
+                                </Draggable>
+                            ))}
+                            {provided.placeholder}
+                        </List>
+                    )}
+                </Droppable>
+            </DragDropContext>
+        </Paper>
+    );
+
+    const renderInitialEquips = () => {
+        const allEquips = GameData.getAllEquipInfo();
+        
+        return (
+            <Paper sx={{ p: 2, mb: 2 }}>
+                <h3>初始装备</h3>
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {selectedActor?.equip_slot.map((slot, index) => {
+                        const filteredOptions = allEquips
+                            .filter(equip => equip && equip.type === slot)
+                            .map(equip => ({
+                                value: equip.id,
+                                label: `${equip.id}: ${equip.name}`
+                            }));
+    
+                        return (
+                            <ComboBox
+                                key={`${slot}-${index}`}
+                                label={slot}
+                                value={selectedActor.equip[index]}
+                                options={filteredOptions}
+                                onChange={(value) => handleEquipChange(index, value)}
+                            />
+                        );
+                    })}
+                </Box>
+            </Paper>
+        );
+    };
+
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
             <Paper sx={{ width: '200px', p: 2 }}>
@@ -386,6 +542,8 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                     {renderMapEditor('属性', selectedActor.attributes, 'attributes')}
                     {renderMapEditor('财富', selectedActor.wealth, 'wealth')}
                     {renderMapEditor('物品', selectedActor.items, 'items')}
+                    {renderEquipSlots()}
+                    {renderInitialEquips()}
                 </Box>
             )}
 
@@ -420,6 +578,15 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                 content={newActorName}
                 handleOnChange={(e) => setNewActorName(e.target.value)}
                 handleSave={handleCreateActor}
+            />
+            <SingleInput
+                label="新建装备槽"
+                inputType="装备类型"
+                dialogOpen={equipSlotDialog}
+                handleOnClose={() => setEquipSlotDialog(false)}
+                content={newEquipSlot}
+                handleOnChange={(e) => setNewEquipSlot(e.target.value)}
+                handleSave={handleSaveEquipSlot}
             />
         </Box>
     );
