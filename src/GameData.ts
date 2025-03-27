@@ -55,12 +55,24 @@ export interface Equip {
     animation_id: number;
 }
 
+export interface Enemy {
+    id: number;
+    name: string;
+    description: string;
+    special: { key: string, value: number[] }[];
+    file: [string, number];
+    attr: { key: string, value: number }[];
+    drop: { key: string, value: number }[];
+    items: { id: number, number: number }[];
+}
+
 export class GameDataRecorder {
     private root: string;
     private config: Config;
     private actorsInfo: Actor [];;
     private itemsInfo: Item [];
     private equipInfo: Equip [];
+    private enemyInfo: Enemy[];
 
     constructor() {
         this.root = "";
@@ -90,6 +102,7 @@ export class GameDataRecorder {
         this.actorsInfo = [];
         this.itemsInfo = [];
         this.equipInfo = [];
+        this.enemyInfo = [];
     }
 
     getRoot() {
@@ -172,6 +185,22 @@ export class GameDataRecorder {
         this.equipInfo = equipInfo;
     }
 
+    getAllEnemyInfo() {
+        return this.enemyInfo;
+    }
+
+    getEnemyInfo(id: number) {
+        return this.enemyInfo[id];
+    }
+
+    setEnemyInfo(id: number, enemyInfo: Enemy) {
+        this.enemyInfo[id] = enemyInfo;
+    }
+
+    setAllEnemyInfo(enemyInfo: Enemy[]) {
+        this.enemyInfo = enemyInfo;
+    }
+
     getCopyToAllData() {
         const data = new GameDataRecorder();
         data.setRoot(this.root);
@@ -193,6 +222,13 @@ export class GameDataRecorder {
             file: [...equip.file],
             attr_plus: equip.attr_plus.map(attr => ({ ...attr }))
         })));
+        data.setAllEnemyInfo(this.enemyInfo.map(enemy => ({
+           ...enemy,
+            file: [...enemy.file],
+            attr: enemy.attr.map(attr => ({...attr })),
+            drop: enemy.drop.map(drop => ({...drop })),
+            items: enemy.items.map(item => ({...item }))
+        })))
         return data;
     }
 }

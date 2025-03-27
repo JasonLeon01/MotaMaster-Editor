@@ -68,6 +68,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                 { key: 'def', value: 10 }
             ],
             wealth: [
+                { key: 'exp', value: 0 },
                 { key: 'gold', value: 0 }
             ],
             items: [],

@@ -36,6 +36,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
         path: ''
     });
     const [selectedCell, setSelectedCell] = useState<{x: number, y: number}>({x: 0, y: 0});
+    const [updateTrigger, setUpdateTrigger] = useState(0);
 
     const handleAddEquip = () => {
         setNewEquipName('');
@@ -72,7 +73,16 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     const handleDeleteEquip = (equip: Equip, event: React.MouseEvent) => {
         event.stopPropagation();
-        const equip_index = equips.findIndex(i => i.id === equip.id);
+        if (equips.length === 2) {
+            setSnackbar({
+                open: true,
+                severity: 'warning',
+                message: '至少需要保留一个装备'
+            });
+            return;
+        }
+
+        const equip_index = equips.findIndex(i => i && i.id === equip.id);
         if (equip_index !== -1) {
             equips.splice(equip_index, 1);
             for (let i = equip_index; i < equips.length; i++) {
@@ -82,6 +92,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
             if (selectedEquip?.id === equip.id) {
                 setSelectedEquip(equips[0] || null);
             }
+            setUpdateTrigger(prev => prev + 1);
         }
     };
 
@@ -94,7 +105,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     const handleCellSelect = (x: number, y: number) => {
         if (!selectedEquip) return;
-        
+
         const updated = {
             ...selectedEquip,
             file: [selectedEquip.file[0], x, y] as [string, number, number]
@@ -107,7 +118,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     const handleFileSelect = (files: string[]) => {
         if (!selectedEquip || files.length === 0) return;
-        
+
         const updated = { ...selectedEquip, file: [files[0], 0, 0] as [string, number, number] };
         equips[updated.id] = updated;
         GameData.setEquipInfo(updated.id, updated);
@@ -203,7 +214,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     const renderImageSelector = () => {
         if (!selectedEquip) return null;
-        
+
         return (
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{ position: 'relative', display: 'inline-block' }}>

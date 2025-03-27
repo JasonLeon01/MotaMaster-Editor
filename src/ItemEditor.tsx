@@ -17,6 +17,7 @@ function ItemEditor({ items, root }: ItemEditorProps) {
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [newItemDialog, setNewItemDialog] = useState(false);
     const [newItemName, setNewItemName] = useState('');
+    const [updateTrigger, setUpdateTrigger] = useState(0);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -62,7 +63,16 @@ function ItemEditor({ items, root }: ItemEditorProps) {
 
     const handleDeleteItem = (item: Item, event: React.MouseEvent) => {
         event.stopPropagation();
-        const item_index = items.findIndex(i => i.id === item.id);
+        if (items.length === 2) {
+            setSnackbar({
+                open: true,
+                severity: 'warning',
+                message: '至少需要保留一个物品'
+            });
+            return;
+        }
+
+        const item_index = items.findIndex(i => i && i.id === item.id);
         if (item_index !== -1) {
             items.splice(item_index, 1);
             for (let i = item_index; i < items.length; i++) {
@@ -72,6 +82,7 @@ function ItemEditor({ items, root }: ItemEditorProps) {
             if (selectedItem?.id === item.id) {
                 setSelectedItem(items[0] || null);
             }
+            setUpdateTrigger(prev => prev + 1);
         }
     };
 
