@@ -1,12 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, SyntheticEvent } from 'react';
 import { Box, IconButton, Paper, Menu, MenuItem } from '@mui/material';
 import { RichTreeView } from '@mui/x-tree-view/RichTreeView';
 import { TreeViewBaseItem } from '@mui/x-tree-view/models';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
 import GameData, { Map_, MapInfo } from './GameData';
 import SingleInput from './utils/SingleInput';
 import Hint from './utils/uHint';
+import DraggableList from './utils/DraggableList';
 
 interface MapEditorProps {
     root: string;
@@ -22,6 +22,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     const [newMapName, setNewMapName] = useState('');
     const [newRegionDialog, setNewRegionDialog] = useState(false);
     const [newMapDialog, setNewMapDialog] = useState(false);
+    const [targetRegionMaps, setTargetRegionMaps] = useState<Array<{id: string; label: string}>>([]);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -32,6 +33,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         mouseY: number;
         itemId: string;
     } | null>(null);
+    const [reorderDialog, setReorderDialog] = useState(false);
 
     useEffect(() => {
         const regions = mapsInfo.map(info => info.region);
@@ -125,7 +127,6 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                 info.data.push(map);
             }
         });
-        setSelectedMap(newMapName);
         setNewMapDialog(false);
         setSnackbar({
             open: true,
@@ -150,7 +151,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
 
     const handleDeleteItem = () => {
         if (!contextMenu) return;
-        const [region, map] = contextMenu.itemId.split('-');
+        const [region, map] = contextMenu.itemId.split('#');
         if (map) {
             setSnackbar({
                 open: true,
@@ -167,7 +168,30 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         handleContextMenuClose();
     };
 
-    const handleDragEnd = (result: any) => {
+    const handleReorderConfirm = (newOrder: Array<{id: string; label: string}>) => {
+        if (!selectedRegion) return;
+
+        const regionMaps = mapRecord.get(selectedRegion);
+        if (!regionMaps) return;
+
+        const index = mapsInfo.findIndex(info => info.region === selectedRegion);
+        if (index === -1) return;
+
+        newOrder.forEach((item, idx)=> {
+            const filename = item.id;
+            if (filename) {
+                const mapData = regionMaps.get(filename);
+                if (mapData) {
+                    mapsInfo[index].data[idx] = mapData;
+                }
+            }
+        })
+
+        setSnackbar({
+            open: true,
+            severity: 'success',
+            message: '地图顺序已更新',
+        });
     };
 
     const convertToTreeItems = (regions: string[]): TreeViewBaseItem[] => {
@@ -182,16 +206,16 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                 if (info.region === region) {
                     info.data.forEach(map => {
                         const mapItem: TreeViewBaseItem = {
-                            id: `${region}-${map.name}`,
+                            id: `${region}#${map.name}`,
                             label: map.name,
                             children: [],
                         };
                         regionItem.children?.push(mapItem);
                     });
                 }
-            })
+            });
             treeItems.push(regionItem);
-        })
+        });
         return treeItems;
     };
 
@@ -205,10 +229,10 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                     </IconButton>
                 </Box>
 
-                <RichTreeView
+                <RichTreeView multiSelect
                     items={convertToTreeItems(regions)}
                     onItemClick={(event, itemId) => {
-                        const [region, map] = itemId.split('-');
+                        const [region, map] = itemId.split('#');
                         if (map) {
                             setSelectedRegion(region);
                             setSelectedMap(map);
@@ -218,8 +242,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                         }
                     }}
                     onContextMenu={(event) => {
-                        const target = event.target as HTMLElement;
-                        const itemId = target.closest('[role="treeitem"]')?.getAttribute('data-id') || '';
+                        const itemId = selectedMap ? '' : (selectedRegion ?? '');
                         handleContextMenu(event, itemId);
                     }}
                 />
@@ -234,12 +257,29 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                             : undefined
                     }
                 >
-                    {contextMenu && !contextMenu.itemId.includes('-') && (
+                    {contextMenu && contextMenu.itemId != '' && (
                         <MenuItem onClick={() => {
                             handleAddMap();
                             handleContextMenuClose();
                         }}>
                             添加地图
+                        </MenuItem>
+                    )}
+                    {contextMenu && contextMenu.itemId != '' && (
+                        <MenuItem onClick={() => {
+                            const [region] = contextMenu.itemId.split('#');
+
+                            const maps = mapsInfo.find(info => info.region === region)?.data.map(map => ({
+                                id: map.filename,
+                                label: `${map.filename}: ${map.name}`
+                            })) ?? [];
+
+                            setTargetRegionMaps(maps);
+
+                            setReorderDialog(true);
+                            handleContextMenuClose();
+                        }}>
+                            调整顺序
                         </MenuItem>
                     )}
                     <MenuItem onClick={handleDeleteItem}>删除</MenuItem>
@@ -273,6 +313,14 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                     snackbar={snackbar}
                     handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
                 />
+
+            <DraggableList
+                items={targetRegionMaps}
+                open={reorderDialog}
+                title="调整地图顺序"
+                onClose={() => setReorderDialog(false)}
+                onConfirm={handleReorderConfirm}
+            />
             </Paper>
         </Box>
     );
