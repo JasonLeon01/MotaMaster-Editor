@@ -1,12 +1,14 @@
-import { useState, useEffect, SyntheticEvent } from 'react';
-import { Box, IconButton, Paper, Menu, MenuItem } from '@mui/material';
+import { useState, useEffect } from 'react';
+import { Box, IconButton, Paper, Menu, MenuItem, Switch, List, ListItem, ListItemButton, ListItemText, Typography } from '@mui/material';
 import { RichTreeView } from '@mui/x-tree-view/RichTreeView';
 import { TreeViewBaseItem } from '@mui/x-tree-view/models';
 import AddIcon from '@mui/icons-material/Add';
-import GameData, { Map_, MapInfo } from './GameData';
+import { Map_, MapInfo } from './GameData';
 import SingleInput from './utils/SingleInput';
 import Hint from './utils/uHint';
 import DraggableList from './utils/DraggableList';
+import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 interface MapEditorProps {
     root: string;
@@ -23,6 +25,10 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     const [newRegionDialog, setNewRegionDialog] = useState(false);
     const [newMapDialog, setNewMapDialog] = useState(false);
     const [targetRegionMaps, setTargetRegionMaps] = useState<Array<{id: string; label: string}>>([]);
+    const [isEventMode, setIsEventMode] = useState(true);
+    const [selectedLayer, setSelectedLayer] = useState<number | null>(null);
+    const [newLayerName, setNewLayerName] = useState('');
+    const [newLayerDialog, setNewLayerDialog] = useState(false);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -39,6 +45,10 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         const regions = mapsInfo.map(info => info.region);
         setRegions(regions);
     }, []);
+
+    useEffect(() => {
+        setSelectedLayer(null);
+    }, [selectedMap]);
 
     const handleAddRegion = () => {
         setNewRegionName('');
@@ -194,6 +204,60 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         });
     };
 
+    const handleAddLayer = () => {
+        setNewLayerName('');
+        setNewLayerDialog(true);
+    };
+
+    const handleCreateLayer = () => {
+        if (!selectedRegion || !selectedMap) return;
+        if (!newLayerName.trim()) {
+            setSnackbar({
+                open: true,
+                severity: 'error',
+                message: '图层名称不能为空'
+            });
+            return;
+        }
+
+        const targetMap = mapsInfo
+            .find(info => info.region === selectedRegion)
+            ?.data.find(map => map.name === selectedMap);
+
+        if (targetMap) {
+            targetMap.layers.push({
+                name: newLayerName,
+                tilemap: 1,
+                tiles: Array.from({ length: targetMap.width }, () => Array.from({ length: targetMap.height }, () => 0)),
+                events: {}
+            });
+
+            console.log(targetMap);
+
+            setNewLayerDialog(false);
+            setSnackbar({
+                open: true,
+                severity: 'success',
+                message: '已添加新图层'
+            });
+        }
+    };
+
+    const handleLayerDragEnd = (result: any) => {
+        if (!result.destination || !selectedRegion || !selectedMap) return;
+
+        const targetMap = mapsInfo
+            .find(info => info.region === selectedRegion)
+            ?.data.find(map => map.name === selectedMap);
+
+        if (targetMap) {
+            const newLayers = Array.from(targetMap.layers);
+            const [movedLayer] = newLayers.splice(result.source.index, 1);
+            newLayers.splice(result.destination.index, 0, movedLayer);
+            targetMap.layers = newLayers;
+        }
+    };
+
     const convertToTreeItems = (regions: string[]): TreeViewBaseItem[] => {
         const treeItems: TreeViewBaseItem[] = [];
         regions.forEach(region => {
@@ -275,7 +339,6 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                             })) ?? [];
 
                             setTargetRegionMaps(maps);
-
                             setReorderDialog(true);
                             handleContextMenuClose();
                         }}>
@@ -295,7 +358,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                     content={newRegionName}
                     handleOnChange={(e) => setNewRegionName(e.target.value)}
                     handleSave={handleCreateRegion}
-                />
+                    />
 
                 <SingleInput
                     label="新建地图"
@@ -307,21 +370,90 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                     content={newMapName}
                     handleOnChange={(e) => setNewMapName(e.target.value)}
                     handleSave={handleCreateMap}
-                />
+                    />
 
                 <Hint
                     snackbar={snackbar}
                     handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                />
+                    />
 
-            <DraggableList
-                items={targetRegionMaps}
-                open={reorderDialog}
-                title="调整地图顺序"
-                onClose={() => setReorderDialog(false)}
-                onConfirm={handleReorderConfirm}
-            />
+                <DraggableList
+                    items={targetRegionMaps}
+                    open={reorderDialog}
+                    title="调整地图顺序"
+                    onClose={() => setReorderDialog(false)}
+                    onConfirm={handleReorderConfirm}
+                    />
             </Paper>
+
+            {selectedMap && (
+                <Box sx={{ flex: 1, p: 2 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                        <Typography>绘制模式</Typography>
+                        <Switch
+                            checked={isEventMode}
+                            onChange={(e) => setIsEventMode(e.target.checked)}
+                        />
+                        <Typography>事件模式</Typography>
+                    </Box>
+
+                    <Paper sx={{ width: 300, mt: 2, maxHeight: '10vh', overflow: 'auto' }}>
+                        <List>
+                            <ListItem
+                                secondaryAction={
+                                    <IconButton edge="end" onClick={handleAddLayer}>
+                                        <AddIcon />
+                                    </IconButton>
+                                }
+                            >
+                                <ListItemText primary="图层列表" />
+                            </ListItem>
+                            <DragDropContext onDragEnd={handleLayerDragEnd}>
+                                <Droppable droppableId="layer-list">
+                                    {(provided) => (
+                                        <div {...provided.droppableProps} ref={provided.innerRef}>
+                                            {mapsInfo
+                                                .find(info => info.region === selectedRegion)
+                                                ?.data.find(map => map.name === selectedMap)
+                                                ?.layers.map((layer, index) => (
+                                                    <Draggable
+                                                        key={index}
+                                                        draggableId={`layer-${index}`}
+                                                        index={index}
+                                                    >
+                                                        {(provided) => (
+                                                            <ListItemButton
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                selected={selectedLayer === index}
+                                                                onClick={() => setSelectedLayer(selectedLayer === index ? null : index)}
+                                                            >
+                                                                <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                    <DragIndicatorIcon />
+                                                                </Box>
+                                                                <ListItemText primary={layer.name || `图层 ${index + 1}`} />
+                                                            </ListItemButton>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                            {provided.placeholder}
+                                        </div>
+                                    )}
+                                </Droppable>
+                            </DragDropContext>
+                        </List>
+                    </Paper>
+                </Box>
+            )}
+            <SingleInput
+                label="新建图层"
+                inputType="图层名称"
+                dialogOpen={newLayerDialog}
+                handleOnClose={() => setNewLayerDialog(false)}
+                content={newLayerName}
+                handleOnChange={(e) => setNewLayerName(e.target.value)}
+                handleSave={handleCreateLayer}
+            />
         </Box>
     );
 }

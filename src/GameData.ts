@@ -102,7 +102,8 @@ export interface Map_ {
     layers: {
         name: string;
         tilemap: number;
-        events: Map<number, Event>;
+        tiles: number[][];
+        events: { [key: number]: Event };
     }[];
 }
 
@@ -372,7 +373,8 @@ export class GameDataRecorder {
                 ...map,
                 layers: Array.isArray(map.layers) ? map.layers.map(layer => ({
                     ...layer,
-                    events: new Map(layer.events)
+                    tiles: layer.tiles.map(row => [...row]),
+                    events: { ...layer.events }
                 })) : []
             })) : []
         })));
