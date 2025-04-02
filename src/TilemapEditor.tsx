@@ -140,6 +140,15 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
         const img = new Image();
         img.src = `file://${path.join(root, 'assets', 'tilesets', files[0])}`;
         img.onload = () => {
+            if (img.width !== 256) {
+                setSnackbar({
+                    open: true,
+                    severity: 'error',
+                    message: '图块宽度必须为256像素'
+                });
+                return;
+            }
+
             const rows = Math.floor(img.height / 32);
             const cols = Math.floor(img.width / 32);
 
@@ -163,7 +172,6 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
             setSelectedTilemap(updated);
         };
         setFileSelector(prev => ({ ...prev, open: false }));
-        console.log(GameData.getTilemapInfo(1));
     };
 
     const handleCellClick = (x: number, y: number) => {

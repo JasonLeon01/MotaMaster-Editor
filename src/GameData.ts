@@ -96,9 +96,7 @@ export interface Map_ {
     width: number;
     height: number;
     bgm: string;
-    bgm_volume: number;
     bgs: string;
-    bgs_volume: number;
     layers: {
         name: string;
         tilemap: number;
