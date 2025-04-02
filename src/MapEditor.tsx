@@ -45,6 +45,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     const [currentAudioType, setCurrentAudioType] = useState<"bgm" | "bgs" | null>(null);
     const [tileSize, setTileSize] = useState(32);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const [scale, setScale] = useState(1);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -656,11 +657,20 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                         overflow: 'auto',
                         backgroundColor: '#e0e0e0'
                     }}>
-                        <Box sx={{ position: 'relative' }}>
+                        <Box
+                            sx={{ position: 'relative' }}
+                            onWheel={(e) => {
+                                e.preventDefault();
+                                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                                setScale(prev => Math.max(0.1, Math.min(5, prev + delta)));
+                            }}
+                        >
                             <canvas
                                 ref={canvasRef}
                                 style={{
-                                    display: 'block'
+                                    display: 'block',
+                                    transform: `scale(${scale})`,
+                                    transformOrigin: 'top left'
                                 }}
                                 width={(selectedMap ? (mapsInfo
                                     ?.find(info => info.region === selectedRegion)
