@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, TextField, Button, Radio, RadioGroup, FormControlLabel, IconButton, Paper } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, TextField, Button, Radio, RadioGroup, FormControlLabel, IconButton, Paper, Menu, MenuItem } from '@mui/material';
 import GameData, { Tilemap } from './GameData';
 import FileSelector from './utils/FileSelector';
 import SingleInput from './utils/SingleInput';
 import MultiSwitchInput from './utils/MultiSwitchInput';
 import { Cancel, CheckCircle, ArrowUpward, ArrowDownward, ArrowBack, ArrowForward, FiberManualRecord } from '@mui/icons-material';
 import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
 import Hint from 'utils/uHint';
 
 const path = window.require('path');
@@ -50,6 +49,11 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
         severity: 'success' | 'info' | 'warning' | 'error';
         message: string;
     }>({ open: false, severity: 'warning', message: '' });
+    const [contextMenu, setContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        tilemapId: number;
+    } | null>(null);
 
 
     const handleAddTilemap = () => {
@@ -76,8 +80,30 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
         setNewTilemapDialog(false);
     };
 
-    const handleDeleteTilemap = (tilemap: Tilemap, event: React.MouseEvent) => {
+    const handleContextMenu = (event: React.MouseEvent, tilemap: Tilemap) => {
+        event.preventDefault();
         event.stopPropagation();
+        setContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            tilemapId: tilemap.id
+        });
+    };
+
+    const handleContextMenuClose = () => {
+        setContextMenu(null);
+    };
+
+    const handleDeleteFromMenu = () => {
+        if (contextMenu === null) return;
+        const tilemap = tilemaps.find(t => t && t.id === contextMenu.tilemapId);
+        if (!tilemap) return;
+
+        handleDeleteTilemap(tilemap);
+        handleContextMenuClose();
+    };
+
+    const handleDeleteTilemap = (tilemap: Tilemap) => {
         if (tilemaps.length === 2) {
             setSnackbar({
                 open: true,
@@ -270,7 +296,7 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
         <Box sx={{ display: 'flex', gap: 2 }}>
             <Paper sx={{ width: '200px', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>瓦块地图</h3>
+                    <h3 style={{ margin: 0 }}>图块列表</h3>
                     <IconButton
                         onClick={handleAddTilemap}
                         color="primary"
@@ -284,26 +310,31 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
                             key={tilemap.id}
                             selected={selectedTilemap?.id === tilemap.id}
                             onClick={() => setSelectedTilemap(tilemap)}
+                            onContextMenu={(e) => handleContextMenu(e, tilemap)}
                         >
                             <ListItemText primary={`${tilemap.id}: ${tilemap.name}`} />
-                            <IconButton
-                                size="small"
-                                onClick={(e) => {
-                                    handleDeleteTilemap(tilemap, e);
-                                }}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
+                <Menu
+                    open={contextMenu !== null}
+                    onClose={handleContextMenuClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                        contextMenu !== null
+                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                            : undefined
+                    }
+                >
+                    <MenuItem onClick={handleDeleteFromMenu}>删除</MenuItem>
+                </Menu>
             </Paper>
 
             <Box sx={{ flex: 1, p: 2 }}>
                 {selectedTilemap && (
                     <>
                         <TextField
-                            label="瓦块地图名称"
+                            label="图块名称"
                             value={selectedTilemap.name}
                             onChange={(e) => {
                                 const updated = { ...selectedTilemap, name: e.target.value };
@@ -391,8 +422,8 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
             </Box>
 
             <SingleInput
-                label="新建瓦块地图"
-                inputType="地图名称"
+                label="新建图块"
+                inputType="图块名称"
                 dialogOpen={newTilemapDialog}
                 handleOnClose={() => setNewTilemapDialog(false)}
                 content={newTilemapName}

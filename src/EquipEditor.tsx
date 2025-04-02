@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton, Menu, MenuItem } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import GameData, { Equip } from './GameData';
 import Hint from './utils/uHint';
@@ -37,6 +36,17 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
     });
     const [selectedCell, setSelectedCell] = useState<{x: number, y: number}>({x: 0, y: 0});
     const [updateTrigger, setUpdateTrigger] = useState(0);
+    const [equipContextMenu, setEquipContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        equipId: number | null;
+    } | null>(null);
+
+    const [attrContextMenu, setAttrContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        key: string | null;
+    } | null>(null);
 
     const handleAddEquip = () => {
         setNewEquipName('');
@@ -71,14 +81,45 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
         setSelectedEquip(newEquip);
     };
 
-    const handleDeleteEquip = (equip: Equip, event: React.MouseEvent) => {
+    const handleEquipContextMenu = (event: React.MouseEvent, equip: Equip) => {
+        event.preventDefault();
+        setEquipContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            equipId: equip.id
+        });
+    };
+
+    const handleAttrContextMenu = (event: React.MouseEvent, key: string) => {
+        event.preventDefault();
         event.stopPropagation();
+        setAttrContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            key: key
+        });
+    };
+
+    const handleEquipContextMenuClose = () => {
+        setEquipContextMenu(null);
+    };
+
+    const handleAttrContextMenuClose = () => {
+        setAttrContextMenu(null);
+    };
+
+    const handleDeleteEquipFromMenu = () => {
+        if (equipContextMenu?.equipId === null) return;
+        const equip = equips.find(e => e && e.id === equipContextMenu?.equipId);
+        if (!equip) return;
+
         if (equips.length === 2) {
             setSnackbar({
                 open: true,
                 severity: 'warning',
                 message: '至少需要保留一个装备'
             });
+            handleEquipContextMenuClose();
             return;
         }
 
@@ -94,6 +135,13 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
             }
             setUpdateTrigger(prev => prev + 1);
         }
+        handleEquipContextMenuClose();
+    };
+
+    const handleDeleteAttrFromMenu = () => {
+        if (!attrContextMenu?.key || !selectedEquip) return;
+        handleDelete(attrContextMenu.key);
+        handleAttrContextMenuClose();
     };
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -280,17 +328,24 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                             key={equip.id}
                             selected={selectedEquip?.id === equip.id}
                             onClick={() => setSelectedEquip(equip)}
+                            onContextMenu={(e) => handleEquipContextMenu(e, equip)}
                         >
                             <ListItemText primary={`${equip.id}: ${equip.name}`} />
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleDeleteEquip(equip, e)}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
+                <Menu
+                    open={equipContextMenu !== null}
+                    onClose={handleEquipContextMenuClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                        equipContextMenu !== null
+                            ? { top: equipContextMenu.mouseY, left: equipContextMenu.mouseX }
+                            : undefined
+                    }
+                >
+                    <MenuItem onClick={handleDeleteEquipFromMenu}>删除</MenuItem>
+                </Menu>
             </Paper>
 
             {selectedEquip && (
@@ -388,27 +443,19 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                                                         <Draggable key={item.key} draggableId={item.key} index={index}>
                                                             {(provided: DraggableProvided) => (
                                                                 <ListItemButton
-                                                                    ref={provided.innerRef}
-                                                                    {...provided.draggableProps}
-                                                                    onClick={() => handleEditField(item.key, item.value)}
-                                                                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                                                                >
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                                        <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                                            <DragIndicatorIcon />
-                                                                        </Box>
-                                                                        <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                onClick={() => handleEditField(item.key, item.value)}
+                                                                onContextMenu={(e) => handleAttrContextMenu(e, item.key)}
+                                                                sx={{ display: 'flex', justifyContent: 'space-between' }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                                    <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                        <DragIndicatorIcon />
                                                                     </Box>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDelete(item.key);
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </ListItemButton>
+                                                                    <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                </Box>
+                                                            </ListItemButton>
                                                             )}
                                                         </Draggable>
                                                     ))}
@@ -417,6 +464,18 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                                             )}
                                         </Droppable>
                                     </DragDropContext>
+                                    <Menu
+                                        open={attrContextMenu !== null}
+                                        onClose={handleAttrContextMenuClose}
+                                        anchorReference="anchorPosition"
+                                        anchorPosition={
+                                            attrContextMenu !== null
+                                                ? { top: attrContextMenu.mouseY, left: attrContextMenu.mouseX }
+                                                : undefined
+                                        }
+                                    >
+                                        <MenuItem onClick={handleDeleteAttrFromMenu}>删除</MenuItem>
+                                    </Menu>
                                 </Paper>
                             </Grid2>
                         </Grid2>

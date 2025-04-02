@@ -1,10 +1,9 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Grid2, IconButton } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Grid2, IconButton, Menu, MenuItem } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import GameData, { Actor } from './GameData';
 import Hint from './utils/uHint';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import FileSelector from './utils/FileSelector';
 import DoubleInput from 'utils/DoubleInput';
@@ -40,6 +39,23 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
     const [equipSlotDialog, setEquipSlotDialog] = useState(false);
     const [newEquipSlot, setNewEquipSlot] = useState('');
     const [editingEquipSlotIndex, setEditingEquipSlotIndex] = useState<number | null>(null);
+    const [contextMenu, setContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        actorId: number | null;
+    } | null>(null);
+    const [itemContextMenu, setItemContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        type: 'attr' | 'wealth' | 'items';
+        key: string;
+    } | null>(null);
+
+    const [equipSlotContextMenu, setEquipSlotContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        index: number;
+    } | null>(null);
 
     const handleAddActor = () => {
         setNewActorName('');
@@ -82,14 +98,31 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         setSelectedActor(newActor);
     };
 
-    const handleDeleteActor = (actor: Actor, event: React.MouseEvent) => {
-        event.stopPropagation();
+    const handleContextMenu = (event: React.MouseEvent, actor: Actor) => {
+        event.preventDefault();
+        setContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            actorId: actor.id
+        });
+    };
+
+    const handleContextMenuClose = () => {
+        setContextMenu(null);
+    };
+
+    const handleDeleteFromMenu = () => {
+        if (contextMenu?.actorId === null) return;
+        const actor = actors.find(a => a && a.id === contextMenu?.actorId);
+        if (!actor) return;
+
         if (actors.length === 2) {
             setSnackbar({
                 open: true,
                 severity: 'warning',
                 message: '至少保留一个角色'
             });
+            handleContextMenuClose();
             return;
         }
 
@@ -104,6 +137,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
             }
             setUpdateTrigger(prev => prev + 1);
         }
+        handleContextMenuClose();
     };
 
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,11 +162,52 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
         actors[updatedActor.id] = updatedActor;
     };
 
+    const handleItemContextMenu = (event: React.MouseEvent, type: 'attr' | 'wealth' | 'items', key: string) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setItemContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            type,
+            key
+        });
+    };
+
+    const handleEquipSlotContextMenu = (event: React.MouseEvent, index: number) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setEquipSlotContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            index
+        });
+    };
+
+    const handleItemContextMenuClose = () => {
+        setItemContextMenu(null);
+    };
+
+    const handleEquipSlotContextMenuClose = () => {
+        setEquipSlotContextMenu(null);
+    };
+
+    const handleDeleteItemFromMenu = () => {
+        if (!itemContextMenu) return;
+        handleDelete(itemContextMenu.type, itemContextMenu.key);
+        handleItemContextMenuClose();
+    };
+
+    const handleDeleteEquipSlotFromMenu = () => {
+        if (!equipSlotContextMenu) return;
+        handleDeleteEquipSlot(equipSlotContextMenu.index);
+        handleEquipSlotContextMenuClose();
+    };
+
     const handleEditField = (type: 'attr' | 'wealth' | 'items', key: string, value: number) => {
         setEditingField({
             type,
             key,
-            originalKey: key,  // 保存原始key
+            originalKey: key,
             value
         });
         setDialogOpen(true);
@@ -249,6 +324,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
                                             onClick={() => handleEditField(type, item.key, item.value)}
+                                            onContextMenu={(e) => handleItemContextMenu(e, type, item.key)}
                                             sx={{ display: 'flex', justifyContent: 'space-between' }}
                                         >
                                             <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -263,15 +339,6 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                                     }
                                                 />
                                             </Box>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDelete(type, item.key);
-                                                }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
                                         </ListItemButton>
                                     )}
                                 </Draggable>
@@ -281,6 +348,18 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                     )}
                 </Droppable>
             </DragDropContext>
+            <Menu
+                open={itemContextMenu !== null && itemContextMenu.type === type}
+                onClose={handleItemContextMenuClose}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                    itemContextMenu !== null
+                        ? { top: itemContextMenu.mouseY, left: itemContextMenu.mouseX }
+                        : undefined
+                }
+            >
+                <MenuItem onClick={handleDeleteItemFromMenu}>删除</MenuItem>
+            </Menu>
         </Paper>
     );
 
@@ -400,6 +479,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                             ref={provided.innerRef}
                                             {...provided.draggableProps}
                                             onClick={() => handleEditEquipSlot(slot, index)}
+                                            onContextMenu={(e) => handleEquipSlotContextMenu(e, index)}
                                             sx={{ display: 'flex', justifyContent: 'space-between' }}
                                         >
                                             <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
@@ -408,15 +488,6 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                                                 </Box>
                                                 <ListItemText primary={slot} />
                                             </Box>
-                                            <IconButton
-                                                size="small"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    handleDeleteEquipSlot(index);
-                                                }}
-                                            >
-                                                <DeleteIcon />
-                                            </IconButton>
                                         </ListItemButton>
                                     )}
                                 </Draggable>
@@ -426,6 +497,18 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                     )}
                 </Droppable>
             </DragDropContext>
+            <Menu
+                open={equipSlotContextMenu !== null}
+                onClose={handleEquipSlotContextMenuClose}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                    equipSlotContextMenu !== null
+                        ? { top: equipSlotContextMenu.mouseY, left: equipSlotContextMenu.mouseX }
+                        : undefined
+                }
+            >
+                <MenuItem onClick={handleDeleteEquipSlotFromMenu}>删除</MenuItem>
+            </Menu>
         </Paper>
     );
 
@@ -477,17 +560,24 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
                             key={actor.id}
                             selected={selectedActor?.id === actor.id}
                             onClick={() => setSelectedActor(actor)}
+                            onContextMenu={(e) => handleContextMenu(e, actor)}
                         >
                             <ListItemText primary={`${actor.id}: ${actor.name}`} />
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleDeleteActor(actor, e)}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
+                <Menu
+                    open={contextMenu !== null}
+                    onClose={handleContextMenuClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                        contextMenu !== null
+                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                            : undefined
+                    }
+                >
+                    <MenuItem onClick={handleDeleteFromMenu}>删除</MenuItem>
+                </Menu>
             </Paper>
 
             {selectedActor && (

@@ -75,6 +75,42 @@ export interface Tilemap {
     events: number[][];
 }
 
+export interface Order {
+    content: string;
+    params: string[];
+}
+
+export interface Event {
+    id: number;
+    name: string;
+    appear: string;
+    orders: Order[];
+    adjacency: { from: number, to: number[] };
+}
+
+export interface Map_ {
+    filename: string;
+    name: string;
+    description: string;
+    region: string;
+    width: number;
+    height: number;
+    bgm: string;
+    bgm_volume: number;
+    bgs: string;
+    bgs_volume: number;
+    layers: {
+        name: string;
+        tilemap: number;
+        events: Map<number, Event>;
+    }[];
+}
+
+export interface MapInfo {
+    region: string;
+    data: Map_[];
+}
+
 export class GameDataRecorder {
     private root: string;
     private config: Config;
@@ -83,6 +119,8 @@ export class GameDataRecorder {
     private equipInfo: Equip [];
     private enemyInfo: Enemy[];
     private tilemapsInfo: Tilemap[];
+    private mapsRecord: Map<string, Map<string, Map_>>;
+    private mapsInfo: MapInfo[];
 
     constructor() {
         this.root = "";
@@ -114,6 +152,8 @@ export class GameDataRecorder {
         this.equipInfo = [];
         this.enemyInfo = [];
         this.tilemapsInfo = [];
+        this.mapsRecord = new Map();
+        this.mapsInfo = [];
     }
 
     getRoot() {
@@ -228,6 +268,70 @@ export class GameDataRecorder {
         this.tilemapsInfo = tilemapInfo;
     }
 
+    getAllMapsInfo() {
+        return this.mapsInfo;
+    }
+
+    getMapListInfo(region: string) {
+        return this.mapsInfo.find(mapInfo => mapInfo.region === region)?.data ?? [];
+    }
+
+    getMapInfo(region: string, mapID: number) {
+        return this.mapsInfo.find(mapInfo => mapInfo.region === region)?.data[mapID] ?? null;
+    }
+
+    getAllMapsRecord() {
+        return this.mapsRecord;
+    }
+
+    getMapRecord(region: string, filename: string) {
+        return this.mapsRecord.get(region)?.get(filename)?? null;
+    }
+
+    setMapInfo(region: string, mapID: number, mapInfo: Map_) {
+        if (!this.mapsRecord.has(region)) {
+            this.mapsRecord.set(region, new Map());
+        }
+        const mapInfoList = this.mapsInfo.find(mapInfo => mapInfo.region === region)?.data;
+        if (mapInfoList) {
+            if (mapID < mapInfoList.length) {
+                mapInfoList[mapID] = mapInfo;
+            } else {
+                mapInfoList.push(mapInfo);
+            }
+        } else {
+            this.mapsInfo.push({
+                region: region,
+                data: [mapInfo]
+            })
+        }
+    }
+
+    setAllMapsInfo(mapsInfo: MapInfo[]) {
+        this.mapsInfo = mapsInfo;
+    }
+
+    setMapListInfo(region: string, mapInfoList: Map_[]) {
+        if (!this.mapsRecord.has(region)) {
+            this.mapsRecord.set(region, new Map());
+        }
+        if (this.mapsInfo.find(mapInfo => mapInfo.region === region)) {
+            this.mapsInfo.find(mapInfo => mapInfo.region === region)!.data = mapInfoList;
+        } else {
+            this.mapsInfo.push({
+                region: region,
+                data: mapInfoList
+            })
+        }
+    }
+
+    setMapRecord(region: string, filename: string, mapInfo: Map_) {
+        if (!this.mapsRecord.has(region)) {
+            this.mapsRecord.set(region, new Map());
+        }
+        this.mapsRecord.get(region)!.set(filename, mapInfo);
+    }
+
     getCopyToAllData() {
         const data = new GameDataRecorder();
         data.setRoot(this.root);
@@ -262,6 +366,17 @@ export class GameDataRecorder {
             collisionFlags: tilemap.collisionFlags.map(row => [...row]),
             events: tilemap.events.map(row => [...row])
         })))
+        data.setAllMapsInfo(this.mapsInfo.map(mapInfo => ({
+            ...mapInfo,
+            data: Array.isArray(mapInfo.data) ? mapInfo.data.map(map => ({
+                ...map,
+                layers: Array.isArray(map.layers) ? map.layers.map(layer => ({
+                    ...layer,
+                    events: new Map(layer.events)
+                })) : []
+            })) : []
+        })));
+        data.mapsRecord = new Map(this.mapsRecord);
         return data;
     }
 }

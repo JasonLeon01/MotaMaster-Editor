@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, IconButton, Menu, MenuItem } from '@mui/material';
 import { DragDropContext, Droppable, Draggable, DropResult, DroppableProvided, DraggableProvided } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import GameData, { Enemy } from './GameData';
 import Hint from './utils/uHint';
@@ -41,7 +40,6 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
         originalKey: number,
         value: number
     } | null>(null);
-
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -51,6 +49,12 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
         open: false,
         path: ''
     });
+    const [contextMenu, setContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        type: 'enemy' | 'attr' | 'drop' | 'item';
+        id: number | string;
+    } | null>(null);
 
     const handleAddEnemy = () => {
         setNewEnemyName('');
@@ -92,8 +96,42 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
         setSelectedEnemy(newEnemy);
     };
 
-    const handleDeleteEnemy = (enemy: Enemy, event: React.MouseEvent) => {
+    const handleContextMenu = (event: React.MouseEvent, type: 'enemy' | 'attr' | 'drop' | 'item', id: number | string) => {
+        event.preventDefault();
         event.stopPropagation();
+        setContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            type,
+            id
+        });
+    };
+
+    const handleContextMenuClose = () => {
+        setContextMenu(null);
+    };
+
+    const handleDeleteFromMenu = () => {
+        if (!contextMenu) return;
+
+        switch (contextMenu.type) {
+            case 'enemy':
+                handleDeleteEnemy(enemies.find(e => e && e.id === contextMenu.id) as Enemy);
+                break;
+            case 'attr':
+                handleDeleteAttr(contextMenu.id as string);
+                break;
+            case 'drop':
+                handleDeleteDrop(contextMenu.id as string);
+                break;
+            case 'item':
+                handleDeleteItem(contextMenu.id as number);
+                break;
+        }
+        handleContextMenuClose();
+    };
+
+    const handleDeleteEnemy = (enemy: Enemy) => {
         if (enemies.length === 2) {
             setSnackbar({
                 open: true,
@@ -403,14 +441,9 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                             key={enemy.id}
                             selected={selectedEnemy?.id === enemy.id}
                             onClick={() => setSelectedEnemy(enemy)}
+                            onContextMenu={(e) => handleContextMenu(e, 'enemy', enemy.id)}
                         >
                             <ListItemText primary={`${enemy.id}: ${enemy.name}`} />
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleDeleteEnemy(enemy, e)}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
@@ -467,27 +500,19 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                         <Draggable key={item.key} draggableId={item.key} index={index}>
                                                             {(provided: DraggableProvided) => (
                                                                 <ListItemButton
-                                                                    ref={provided.innerRef}
-                                                                    {...provided.draggableProps}
-                                                                    onClick={() => handleEditAttr(item.key, item.value)}
-                                                                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                                                                >
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                                        <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                                            <DragIndicatorIcon />
-                                                                        </Box>
-                                                                        <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                onClick={() => handleEditAttr(item.key, item.value)}
+                                                                onContextMenu={(e) => handleContextMenu(e, 'attr', item.key)}
+                                                                sx={{ display: 'flex', justifyContent: 'space-between' }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                                    <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                        <DragIndicatorIcon />
                                                                     </Box>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDeleteAttr(item.key);
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </ListItemButton>
+                                                                    <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                </Box>
+                                                            </ListItemButton>
                                                             )}
                                                         </Draggable>
                                                     ))}
@@ -517,27 +542,19 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                         <Draggable key={item.key} draggableId={item.key} index={index}>
                                                             {(provided: DraggableProvided) => (
                                                                 <ListItemButton
-                                                                    ref={provided.innerRef}
-                                                                    {...provided.draggableProps}
-                                                                    onClick={() => handleEditDrop(item.key, item.value)}
-                                                                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                                                                >
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                                        <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                                            <DragIndicatorIcon />
-                                                                        </Box>
-                                                                        <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                onClick={() => handleEditDrop(item.key, item.value)}
+                                                                onContextMenu={(e) => handleContextMenu(e, 'drop', item.key)}
+                                                                sx={{ display: 'flex', justifyContent: 'space-between' }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                                    <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                        <DragIndicatorIcon />
                                                                     </Box>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDeleteDrop(item.key);
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </ListItemButton>
+                                                                    <ListItemText primary={`${item.key}: ${item.value}`} />
+                                                                </Box>
+                                                            </ListItemButton>
                                                             )}
                                                         </Draggable>
                                                     ))}
@@ -567,27 +584,19 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                         <Draggable key={item.id} draggableId={item.id.toString()} index={index}>
                                                             {(provided: DraggableProvided) => (
                                                                 <ListItemButton
-                                                                    ref={provided.innerRef}
-                                                                    {...provided.draggableProps}
-                                                                    onClick={() => handleEditItem(item.id, item.number)}
-                                                                    sx={{ display: 'flex', justifyContent: 'space-between' }}
-                                                                >
-                                                                    <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
-                                                                        <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                                            <DragIndicatorIcon />
-                                                                        </Box>
-                                                                        <ListItemText primary={`${getItemName(item.id)} x${item.number}`} />
+                                                                ref={provided.innerRef}
+                                                                {...provided.draggableProps}
+                                                                onClick={() => handleEditItem(item.id, item.number)}
+                                                                onContextMenu={(e) => handleContextMenu(e, 'item', item.id)}
+                                                                sx={{ display: 'flex', justifyContent: 'space-between' }}
+                                                            >
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                                                                    <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                        <DragIndicatorIcon />
                                                                     </Box>
-                                                                    <IconButton
-                                                                        size="small"
-                                                                        onClick={(e) => {
-                                                                            e.stopPropagation();
-                                                                            handleDeleteItem(item.id);
-                                                                        }}
-                                                                    >
-                                                                        <DeleteIcon />
-                                                                    </IconButton>
-                                                                </ListItemButton>
+                                                                    <ListItemText primary={`${getItemName(item.id)} x${item.number}`} />
+                                                                </Box>
+                                                            </ListItemButton>
                                                             )}
                                                         </Draggable>
                                                     ))}
@@ -715,6 +724,19 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                 snackbar={snackbar}
                 handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
             />
+
+            <Menu
+                open={contextMenu !== null}
+                onClose={handleContextMenuClose}
+                anchorReference="anchorPosition"
+                anchorPosition={
+                    contextMenu !== null
+                        ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                        : undefined
+                }
+            >
+                <MenuItem onClick={handleDeleteFromMenu}>删除</MenuItem>
+            </Menu>
         </Box>
     );
 }

@@ -10,6 +10,7 @@
     "@emotion/styled": "^11.14.0",
     "@mui/icons-material": "^6.4.7",
     "@mui/material": "^6.4.7",
+    "@mui/x-tree-view": "^7.28.1",
     "craco": "^0.0.3",
     "electron": "^25.3.0",
     "electron-packager": "^17.1.2",

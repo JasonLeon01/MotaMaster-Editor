@@ -2,13 +2,14 @@ import { useEffect, useState, useCallback } from 'react'
 import './App.css'
 import { Box, List, ListItemButton, ListItemText, Paper, Button, Checkbox, Dialog, DialogActions, DialogContent, DialogTitle, ListItem, ListItemIcon } from '@mui/material'
 import SystemSetting from './SystemSetting'
-import GameData, { Config, Actor, Item, Equip, GameDataRecorder, Enemy, Tilemap } from './GameData'
+import GameData, { Config, Actor, Item, Equip, GameDataRecorder, Enemy, Tilemap, Map_, MapInfo } from './GameData'
 import ActorEditor from './ActorEditor';
 import ItemEditor from 'ItemEditor'
 import EquipEditor from './EquipEditor';
 import Hint from 'utils/uHint'
 import EnemyEditor from 'EnemyEditor'
 import TilemapEditor from 'TilemapEditor'
+import MapEditor from 'MapEditor'
 const fs = window.require('fs');
 const path = window.require('path');
 const { ipcRenderer } = window.require('electron');
@@ -44,6 +45,7 @@ function App() {
         loadEquips(data.path);
         loadEnemies(data.path);
         loadTilemaps(data.path);
+        loadMaps(data.path);
         const origin = GameData.getCopyToAllData();
         setOriginalData(origin);
         setRefreshKey(prev => prev + 1);
@@ -180,6 +182,29 @@ function App() {
       });
     } catch (error) {
       console.error('Failed to load tilemaps:', error);
+    }
+  }
+
+  const loadMaps = (rootPath: string) => {
+    const mapsPath = path.join(rootPath, 'data', 'maps');
+    try {
+      const mapInfoPath = path.join(mapsPath, 'mapinfo.json');
+      const mapInfoData = fs.readFileSync(mapInfoPath, 'utf8');
+      const mapInfo = JSON.parse(mapInfoData);
+      Object.keys(mapInfo).forEach(region => {
+        const mapList = mapInfo[region];
+        let targetMapList: Map_[] = [];
+        mapList.forEach((mapName: string) => {
+          const mapPath = path.join(mapsPath, region,`${mapName}.json`);
+          const mapData = fs.readFileSync(mapPath, 'utf8');
+          const map = JSON.parse(mapData);
+          targetMapList.push(map);
+          GameData.setMapRecord(region, mapName, map);
+        })
+        GameData.setMapListInfo(region, targetMapList);
+      })
+    } catch (error) {
+      console.error('Failed to load maps:', error);
     }
   }
 
@@ -499,6 +524,13 @@ function App() {
   const menuItems = ["地图编辑", "角色编辑", "道具编辑", "装备编辑", "敌人编辑", "图块编辑", "动画编辑", "公共事件", "系统设置"]
   const renderComponent = () => {
     switch (selectedIndex) {
+      case 0:
+        return <MapEditor
+          key={refreshKey}
+          root={GameData.getRoot()}
+          mapsInfo={GameData.getAllMapsInfo()}
+          mapRecord={GameData.getAllMapsRecord()}
+        />;
       case 1:
         return <ActorEditor
           key={refreshKey}

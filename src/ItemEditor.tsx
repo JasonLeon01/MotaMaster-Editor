@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, Checkbox, FormControlLabel, IconButton } from '@mui/material';
+import { Box, List, ListItemButton, ListItemText, Paper, TextField, Button, Grid2, Checkbox, FormControlLabel, IconButton, Menu, MenuItem } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
 import GameData, { Item } from './GameData';
@@ -28,6 +28,11 @@ function ItemEditor({ items, root }: ItemEditorProps) {
         path: ''
     });
     const [selectedCell, setSelectedCell] = useState<{x: number, y: number}>({x: 0, y: 0});
+    const [contextMenu, setContextMenu] = useState<{
+        mouseX: number;
+        mouseY: number;
+        itemId: number | null;
+    } | null>(null);
 
     const handleAddItem = () => {
         setNewItemName('');
@@ -61,14 +66,31 @@ function ItemEditor({ items, root }: ItemEditorProps) {
         setSelectedItem(newItem);
     };
 
-    const handleDeleteItem = (item: Item, event: React.MouseEvent) => {
-        event.stopPropagation();
+    const handleContextMenu = (event: React.MouseEvent, item: Item) => {
+        event.preventDefault();
+        setContextMenu({
+            mouseX: event.clientX,
+            mouseY: event.clientY,
+            itemId: item.id
+        });
+    };
+
+    const handleContextMenuClose = () => {
+        setContextMenu(null);
+    };
+
+    const handleDeleteFromMenu = () => {
+        if (contextMenu?.itemId === null) return;
+        const item = items.find(i => i && i.id === contextMenu?.itemId);
+        if (!item) return;
+
         if (items.length === 2) {
             setSnackbar({
                 open: true,
                 severity: 'warning',
                 message: '至少需要保留一个物品'
             });
+            handleContextMenuClose();
             return;
         }
 
@@ -84,6 +106,7 @@ function ItemEditor({ items, root }: ItemEditorProps) {
             }
             setUpdateTrigger(prev => prev + 1);
         }
+        handleContextMenuClose();
     };
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
@@ -199,17 +222,24 @@ function ItemEditor({ items, root }: ItemEditorProps) {
                             key={item.id}
                             selected={selectedItem?.id === item.id}
                             onClick={() => setSelectedItem(item)}
+                            onContextMenu={(e) => handleContextMenu(e, item)}
                         >
                             <ListItemText primary={`${item.id}: ${item.name}`} />
-                            <IconButton
-                                size="small"
-                                onClick={(e) => handleDeleteItem(item, e)}
-                            >
-                                <DeleteIcon />
-                            </IconButton>
                         </ListItemButton>
                     ))}
                 </List>
+                <Menu
+                    open={contextMenu !== null}
+                    onClose={handleContextMenuClose}
+                    anchorReference="anchorPosition"
+                    anchorPosition={
+                        contextMenu !== null
+                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                            : undefined
+                    }
+                >
+                    <MenuItem onClick={handleDeleteFromMenu}>删除</MenuItem>
+                </Menu>
             </Paper>
 
             {selectedItem && (
