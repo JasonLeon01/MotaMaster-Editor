@@ -206,9 +206,9 @@ function ItemEditor({ items, root }: ItemEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
-            <Paper sx={{ width: '200px', p: 2 }}>
+            <Paper sx={{ width: '15vh', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>物品列表</h3>
+                    <h3>物品列表</h3>
                     <IconButton
                         onClick={handleAddItem}
                         color="primary"

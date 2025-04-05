@@ -301,7 +301,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
     const renderMapEditor = (title: string, items: { key: string, value: number }[], type: 'attr' | 'wealth' | 'items') => (
         <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <h3 style={{ margin: 0 }}>{title}</h3>
+                <h3>{title}</h3>
                 <IconButton
                     onClick={() => handleAdd(type)}
                     color="primary"
@@ -460,7 +460,7 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
     const renderEquipSlots = () => (
         <Paper sx={{ p: 2, mb: 2 }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <h3 style={{ margin: 0 }}>装备槽</h3>
+                <h3>装备槽</h3>
                 <IconButton
                     onClick={handleAddEquipSlot}
                     color="primary"
@@ -544,9 +544,9 @@ function ActorEditor({ actors, root }: ActorEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
-            <Paper sx={{ width: '200px', p: 2 }}>
+            <Paper sx={{ width: '15vh', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>角色列表</h3>
+                    <h3>角色列表</h3>
                     <IconButton
                         onClick={handleAddActor}
                         color="primary"

@@ -312,9 +312,9 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
-            <Paper sx={{ width: '200px', p: 2 }}>
+            <Paper sx={{ width: '15vh', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>装备列表</h3>
+                    <h3>装备列表</h3>
                     <IconButton
                         onClick={handleAddEquip}
                         color="primary"
@@ -427,7 +427,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                             <Grid2 size={{xs:12}}>
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <h3 style={{ margin: 0 }}>属性加成</h3>
+                                        <h3>属性加成</h3>
                                         <IconButton
                                             onClick={handleAdd}
                                             color="primary"
@@ -483,7 +483,7 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                     <Box sx={{ width: '300px' }}>
                         <Paper sx={{ p: 2 }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <h3 style={{ margin: 0 }}>装备图片</h3>
+                                <h3>装备图片</h3>
                                 {renderImageSelector()}
                             </Box>
                         </Paper>

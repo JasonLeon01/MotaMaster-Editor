@@ -425,9 +425,9 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
-            <Paper sx={{ width: '200px', p: 2 }}>
+            <Paper sx={{ width: '15vh', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>敌人列表</h3>
+                    <h3>敌人列表</h3>
                     <IconButton
                         onClick={handleAddEnemy}
                         color="primary"
@@ -484,7 +484,7 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                             <Grid2 size={{xs:12}}>
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <h3 style={{ margin: 0 }}>能力值</h3>
+                                        <h3>能力值</h3>
                                         <IconButton
                                             onClick={handleAddAttr}
                                             color="primary"
@@ -526,7 +526,7 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                             <Grid2 size={{xs:12}}>
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <h3 style={{ margin: 0 }}>掉落物</h3>
+                                        <h3>掉落物</h3>
                                         <IconButton
                                             onClick={handleAddDrop}
                                             color="primary"
@@ -568,7 +568,7 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                             <Grid2 size={{xs:12}}>
                                 <Paper sx={{ p: 2 }}>
                                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                                        <h3 style={{ margin: 0 }}>掉落道具</h3>
+                                        <h3>掉落道具</h3>
                                         <IconButton
                                             onClick={handleAddItem}
                                             color="primary"
@@ -612,7 +612,7 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                     <Box sx={{ width: '300px' }}>
                         <Paper sx={{ p: 2 }}>
                             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-                                <h3 style={{ margin: 0 }}>敌人行走图</h3>
+                                <h3>敌人行走图</h3>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                                     <Box sx={{ position: 'relative', display: 'inline-block' }}>
                                         {selectedEnemy.file[0] ? (

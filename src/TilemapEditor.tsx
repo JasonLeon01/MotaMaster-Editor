@@ -302,9 +302,9 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', gap: 2 }}>
-            <Paper sx={{ width: '200px', p: 2 }}>
+            <Paper sx={{ width: '15vh', p: 2 }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3 style={{ margin: 0 }}>图块列表</h3>
+                    <h3>图块列表</h3>
                     <IconButton
                         onClick={handleAddTilemap}
                         color="primary"

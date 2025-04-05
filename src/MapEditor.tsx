@@ -481,7 +481,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', height: '100%' }}>
-            <Paper sx={{ width: 300, p: 2, overflow: 'auto' }}>
+            <Paper sx={{ width: '15vh', p: 2, overflow: 'auto' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
                     <h3>地图编辑器</h3>
                     <IconButton onClick={handleAddRegion}>
@@ -592,7 +592,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
 
             {selectedMap && (
                 <Box sx={{ flex: 1, p: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+                    <Box sx={{ display: 'flex', gap: 2, mb: 2, width: '50vh' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
                             <Typography>绘制模式</Typography>
                             <Switch
