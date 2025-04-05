@@ -602,7 +602,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                             <Typography>事件模式</Typography>
                         </Box>
 
-                        <Paper sx={{ flex: 1, maxHeight: '15vh', overflow: 'auto' }}>
+                        <Paper sx={{ flex: 1, height: '15vh', overflow: 'auto' }}>
                             <List>
                                 <ListItem
                                     secondaryAction={
