@@ -51,6 +51,8 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     const [selectedTilemap, setSelectedTilemap] = useState<number>(1);
     const [selectedTileId, setSelectedTileId] = useState<number>(0);
     const [tilemapImage, setTilemapImage] = useState<HTMLImageElement | null>(null);
+    const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+    const previewCanvasRef = useRef<HTMLCanvasElement>(null);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -345,6 +347,15 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
             return;
         }
 
+        if (tempMapProperties.width > 100 || tempMapProperties.height > 100) {
+            setSnackbar({
+                open: true,
+                severity: 'error',
+                message: '地图尺寸不能超过100'
+            });
+            return;
+        }
+
         const targetMap = mapsInfo
             .find(info => info.region === selectedRegion)
             ?.data.find(map => map.name === selectedMap);
@@ -358,11 +369,14 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
             targetMap.bgs = tempMapProperties.bgs;
 
             targetMap.layers.forEach(layer => {
-                const newTiles = Array.from({ length: tempMapProperties.height },
-                    (_, y) => Array.from({ length: tempMapProperties.width },
-                        (_, x) => layer.tiles[y]?.[x] || 0
-                    )
-                );
+                const newTiles: number[][] = [];
+                for (let y = 0; y < tempMapProperties.height; y++) {
+                    const row: number[] = [];
+                    for (let x = 0; x < tempMapProperties.width; x++) {
+                        row.push(y < layer.tiles.length && x < layer.tiles[y].length ? layer.tiles[y][x] : 0);
+                    }
+                    newTiles.push(row);
+                }
                 layer.tiles = newTiles;
             });
 
@@ -437,8 +451,6 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
             }
         };
 
-        drawBackground();
-
         const loadImage = async (tilemapId: number): Promise<HTMLImageElement | null> => {
             if (imageCache.has(tilemapId)) {
                 return imageCache.get(tilemapId)!;
@@ -464,12 +476,16 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         };
 
         const renderLayers = async () => {
-            for (let idx = 0; idx < targetMap.layers.length; idx++) {
-                const layer = targetMap.layers[idx];
-                const img = await loadImage(layer.tilemap);
-                if (!img) continue;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const layerImages = await Promise.all(
+                targetMap.layers.map(layer => loadImage(layer.tilemap))
+            );
+            drawBackground();
+            targetMap.layers.forEach((layer, idx) => {
+                const img = layerImages[idx];
+                if (!img) return;
 
-                ctx.globalAlpha = selectedLayer !== null ? (idx === selectedLayer ? 1 : 0.3) : 1;
+                ctx.globalAlpha = selectedLayer !== null ? (idx === selectedLayer ? 1 : 0.5) : 1;
 
                 for (let y = 0; y < targetMap.height; y++) {
                     for (let x = 0; x < targetMap.width; x++) {
@@ -492,12 +508,80 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                         );
                     }
                 }
-            }
+            });
             ctx.globalAlpha = 1;
         };
         renderLayers();
 
     }, [selectedRegion, selectedMap, mapsInfo, tileSize, root, selectedLayer]);
+
+    const drawPreview = useCallback(() => {
+        if (!selectedRegion || !selectedMap || !previewCanvasRef.current || !mousePosition || isEventMode || selectedTileId === null) return;
+
+        const targetMap = mapsInfo
+            .find(info => info.region === selectedRegion)
+            ?.data.find(map => map.name === selectedMap);
+
+        if (!targetMap) return;
+
+        const canvas = previewCanvasRef.current;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) return;
+
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const { x, y } = mousePosition;
+        if (x < 0 || x >= targetMap.width || y < 0 || y >= targetMap.height) return;
+
+        if (selectedLayer === null) return;
+
+        if (selectedTileId === 0) {
+            const gridSize = 16;
+            ctx.globalAlpha = 0.5;
+
+            for (let i = 0; i < tileSize; i += gridSize) {
+                for (let j = 0; j < tileSize; j += gridSize) {
+                    if ((i / gridSize + j / gridSize) % 2 === 0) {
+                        ctx.fillStyle = '#ffffff';
+                    } else {
+                        ctx.fillStyle = '#cccccc';
+                    }
+                    ctx.fillRect(
+                        x * tileSize + i,
+                        y * tileSize + j,
+                        gridSize,
+                        gridSize
+                    );
+                }
+            }
+
+            ctx.strokeStyle = '#000000';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+
+            ctx.globalAlpha = 1;
+            return;
+        }
+
+        const img = imageCache.get(selectedTilemap);
+        if (!img) return;
+
+        ctx.globalAlpha = 0.5;
+        const srcX = (selectedTileId % 8) * tileSize;
+        const srcY = Math.floor(selectedTileId / 8) * tileSize;
+        ctx.drawImage(
+            img,
+            srcX,
+            srcY,
+            tileSize,
+            tileSize,
+            x * tileSize,
+            y * tileSize,
+            tileSize,
+            tileSize
+        );
+        ctx.globalAlpha = 1;
+    }, [selectedRegion, selectedMap, mousePosition, isEventMode, selectedTileId, selectedLayer, selectedTilemap, tileSize, mapsInfo, imageCache]);
 
     useEffect(() => {
         drawMap();
@@ -519,355 +603,397 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
 
     return (
         <Box sx={{ display: 'flex', height: '100%' }}>
-            <Paper sx={{ width: '15vh', p: 2, overflow: 'auto' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                    <h3>地图编辑器</h3>
-                    <IconButton onClick={handleAddRegion}>
-                        <AddIcon />
-                    </IconButton>
-                </Box>
+            <Box sx={{display: 'flex', maxHeight: '65vh', width: '100%'}}>
+                <Paper sx={{ width: '15vh', p: 2, overflow: 'auto' }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <h3>地图编辑器</h3>
+                        <IconButton onClick={handleAddRegion}>
+                            <AddIcon />
+                        </IconButton>
+                    </Box>
 
-                <RichTreeView multiSelect
-                    items={convertToTreeItems(regions)}
-                    onItemClick={(event, itemId) => {
-                        const [region, map] = itemId.split('#');
-                        if (map) {
-                            setSelectedRegion(region);
-                            setSelectedMap(map);
-                        } else {
-                            setSelectedRegion(region);
-                            setSelectedMap(null);
+                    <RichTreeView multiSelect
+                        items={convertToTreeItems(regions)}
+                        onItemClick={(event, itemId) => {
+                            const [region, map] = itemId.split('#');
+                            if (map) {
+                                setSelectedRegion(region);
+                                setSelectedMap(map);
+                            } else {
+                                setSelectedRegion(region);
+                                setSelectedMap(null);
+                            }
+                        }}
+                        onContextMenu={(event) => {
+                            const itemId = selectedMap ? '' : (selectedRegion ?? '');
+                            handleContextMenu(event, itemId);
+                        }}
+                    />
+
+                    <Menu
+                        open={!!contextMenu}
+                        onClose={handleContextMenuClose}
+                        anchorReference="anchorPosition"
+                        anchorPosition={
+                            contextMenu
+                                ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
+                                : undefined
                         }
-                    }}
-                    onContextMenu={(event) => {
-                        const itemId = selectedMap ? '' : (selectedRegion ?? '');
-                        handleContextMenu(event, itemId);
-                    }}
-                />
+                    >
+                        {contextMenu && selectedMap != null && (
+                            <MenuItem onClick={() => {
+                                handleOpenMapProperties();
+                                handleContextMenuClose();
+                            }}>
+                                编辑属性
+                            </MenuItem>
+                        )}
+                        {contextMenu && contextMenu.itemId != '' && (
+                            <MenuItem onClick={() => {
+                                handleAddMap();
+                                handleContextMenuClose();
+                            }}>
+                                添加地图
+                            </MenuItem>
+                        )}
+                        {contextMenu && contextMenu.itemId != '' && (
+                            <MenuItem onClick={() => {
+                                const [region] = contextMenu.itemId.split('#');
 
-                <Menu
-                    open={!!contextMenu}
-                    onClose={handleContextMenuClose}
-                    anchorReference="anchorPosition"
-                    anchorPosition={
-                        contextMenu
-                            ? { top: contextMenu.mouseY, left: contextMenu.mouseX }
-                            : undefined
-                    }
-                >
-                    {contextMenu && selectedMap != null && (
-                        <MenuItem onClick={() => {
-                            handleOpenMapProperties();
-                            handleContextMenuClose();
-                        }}>
-                            编辑属性
-                        </MenuItem>
-                    )}
-                    {contextMenu && contextMenu.itemId != '' && (
-                        <MenuItem onClick={() => {
-                            handleAddMap();
-                            handleContextMenuClose();
-                        }}>
-                            添加地图
-                        </MenuItem>
-                    )}
-                    {contextMenu && contextMenu.itemId != '' && (
-                        <MenuItem onClick={() => {
-                            const [region] = contextMenu.itemId.split('#');
+                                const maps = mapsInfo.find(info => info.region === region)?.data.map(map => ({
+                                    id: map.filename,
+                                    label: `${map.filename}: ${map.name}`
+                                })) ?? [];
 
-                            const maps = mapsInfo.find(info => info.region === region)?.data.map(map => ({
-                                id: map.filename,
-                                label: `${map.filename}: ${map.name}`
-                            })) ?? [];
+                                setTargetRegionMaps(maps);
+                                setReorderDialog(true);
+                                handleContextMenuClose();
+                            }}>
+                                调整顺序
+                            </MenuItem>
+                        )}
+                        <MenuItem onClick={handleDeleteItem}>删除</MenuItem>
+                    </Menu>
 
-                            setTargetRegionMaps(maps);
-                            setReorderDialog(true);
-                            handleContextMenuClose();
-                        }}>
-                            调整顺序
-                        </MenuItem>
-                    )}
-                    <MenuItem onClick={handleDeleteItem}>删除</MenuItem>
-                </Menu>
+                    <SingleInput
+                        label="新建区域"
+                        inputType="区域名称"
+                        dialogOpen={newRegionDialog}
+                        handleOnClose={() => {
+                            setNewRegionDialog(false);
+                        }}
+                        content={newRegionName}
+                        handleOnChange={(e) => setNewRegionName(e.target.value)}
+                        handleSave={handleCreateRegion}
+                        />
 
-                <SingleInput
-                    label="新建区域"
-                    inputType="区域名称"
-                    dialogOpen={newRegionDialog}
-                    handleOnClose={() => {
-                        setNewRegionDialog(false);
-                    }}
-                    content={newRegionName}
-                    handleOnChange={(e) => setNewRegionName(e.target.value)}
-                    handleSave={handleCreateRegion}
-                    />
+                    <SingleInput
+                        label="新建地图"
+                        inputType="地图文件名"
+                        dialogOpen={newMapDialog}
+                        handleOnClose={() => {
+                            setNewMapDialog(false);
+                        }}
+                        content={newMapName}
+                        handleOnChange={(e) => setNewMapName(e.target.value)}
+                        handleSave={handleCreateMap}
+                        />
 
-                <SingleInput
-                    label="新建地图"
-                    inputType="地图文件名"
-                    dialogOpen={newMapDialog}
-                    handleOnClose={() => {
-                        setNewMapDialog(false);
-                    }}
-                    content={newMapName}
-                    handleOnChange={(e) => setNewMapName(e.target.value)}
-                    handleSave={handleCreateMap}
-                    />
+                    <Hint
+                        snackbar={snackbar}
+                        handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
+                        />
 
-                <Hint
-                    snackbar={snackbar}
-                    handleOnClose={() => setSnackbar(prev => ({ ...prev, open: false }))}
-                    />
+                    <DraggableList
+                        items={targetRegionMaps}
+                        open={reorderDialog}
+                        title="调整地图顺序"
+                        onClose={() => setReorderDialog(false)}
+                        onConfirm={handleReorderConfirm}
+                        />
+                </Paper>
 
-                <DraggableList
-                    items={targetRegionMaps}
-                    open={reorderDialog}
-                    title="调整地图顺序"
-                    onClose={() => setReorderDialog(false)}
-                    onConfirm={handleReorderConfirm}
-                    />
-            </Paper>
+                {selectedMap && (
+                    <Box sx={{ flex: 1, p: 2 }}>
+                        <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
+                            <Box sx={{ flex: 1 }}>
+                                <Box sx={{ display: 'flex', gap: 2, mb: 2, width: '50vh' }}>
+                                    <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                        <Typography>绘制模式</Typography>
+                                        <Switch
+                                            checked={isEventMode}
+                                            onChange={(e) => setIsEventMode(e.target.checked)}
+                                        />
+                                        <Typography>事件模式</Typography>
+                                    </Box>
 
-            {selectedMap && (
-                <Box sx={{ flex: 1, p: 2 }}>
-                    <Box sx={{ display: 'flex', gap: 2, height: '100%' }}>
-                        <Box sx={{ flex: 1 }}>
-                            <Box sx={{ display: 'flex', gap: 2, mb: 2, width: '50vh' }}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', p: 2, bgcolor: 'background.paper', borderRadius: 1 }}>
-                                    <Typography>绘制模式</Typography>
-                                    <Switch
-                                        checked={isEventMode}
-                                        onChange={(e) => setIsEventMode(e.target.checked)}
-                                    />
-                                    <Typography>事件模式</Typography>
+                                    <Paper sx={{ flex: 1, height: '15vh', overflow: 'auto' }}>
+                                        <List>
+                                            <ListItem
+                                                secondaryAction={
+                                                    <IconButton edge="end" onClick={handleAddLayer}>
+                                                        <AddIcon />
+                                                    </IconButton>
+                                                }
+                                            >
+                                                <ListItemText primary="图层列表" />
+                                            </ListItem>
+                                            <DragDropContext onDragEnd={handleLayerDragEnd}>
+                                                <Droppable droppableId="layer-list">
+                                                    {(provided) => (
+                                                        <div {...provided.droppableProps} ref={provided.innerRef}>
+                                                            {mapsInfo
+                                                                .find(info => info.region === selectedRegion)
+                                                                ?.data.find(map => map.name === selectedMap)
+                                                                ?.layers.map((layer, index) => (
+                                                                    <Draggable
+                                                                        key={index}
+                                                                        draggableId={`layer-${index}`}
+                                                                        index={index}
+                                                                    >
+                                                                        {(provided) => (
+                                                                            <ListItemButton
+                                                                                ref={provided.innerRef}
+                                                                                {...provided.draggableProps}
+                                                                                selected={selectedLayer === index}
+                                                                                onClick={() => {
+                                                                                    setSelectedLayer(selectedLayer === index ? null : index);
+                                                                                    const layer = mapsInfo
+                                                                                    .find(info => info.region === selectedRegion)
+                                                                                    ?.data.find(map => map.name === selectedMap)
+                                                                                    ?.layers[index];
+                                                                                    if (layer) {
+                                                                                        setSelectedTilemap(layer.tilemap);
+                                                                                    }
+                                                                                }}
+                                                                            >
+                                                                                <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
+                                                                                    <DragIndicatorIcon />
+                                                                                </Box>
+                                                                                <ListItemText primary={layer.name || `图层 ${index + 1}`} />
+                                                                            </ListItemButton>
+                                                                        )}
+                                                                    </Draggable>
+                                                                ))}
+                                                            {provided.placeholder}
+                                                        </div>
+                                                    )}
+                                                </Droppable>
+                                            </DragDropContext>
+                                        </List>
+                                    </Paper>
                                 </Box>
 
-                                <Paper sx={{ flex: 1, height: '15vh', overflow: 'auto' }}>
-                                    <List>
-                                        <ListItem
-                                            secondaryAction={
-                                                <IconButton edge="end" onClick={handleAddLayer}>
-                                                    <AddIcon />
-                                                </IconButton>
+                                <Paper sx={{
+                                    width: '45vh',
+                                    mt: 2,
+                                    height: '45vh',
+                                    overflow: 'auto',
+                                    backgroundColor: '#e0e0e0',
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
+                                    <Box
+                                        sx={{ position: 'relative' }}
+                                        onWheel={(e) => {
+                                            if (e.ctrlKey || e.metaKey) {
+                                                e.preventDefault();
+                                                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                                                setScale(prev => Math.max(0.1, Math.min(5, prev + delta)));
                                             }
-                                        >
-                                            <ListItemText primary="图层列表" />
-                                        </ListItem>
-                                        <DragDropContext onDragEnd={handleLayerDragEnd}>
-                                            <Droppable droppableId="layer-list">
-                                                {(provided) => (
-                                                    <div {...provided.droppableProps} ref={provided.innerRef}>
-                                                        {mapsInfo
-                                                            .find(info => info.region === selectedRegion)
-                                                            ?.data.find(map => map.name === selectedMap)
-                                                            ?.layers.map((layer, index) => (
-                                                                <Draggable
-                                                                    key={index}
-                                                                    draggableId={`layer-${index}`}
-                                                                    index={index}
-                                                                >
-                                                                    {(provided) => (
-                                                                        <ListItemButton
-                                                                            ref={provided.innerRef}
-                                                                            {...provided.draggableProps}
-                                                                            selected={selectedLayer === index}
-                                                                            onClick={() => {
-                                                                                setSelectedLayer(selectedLayer === index ? null : index);
-                                                                                const layer = mapsInfo
-                                                                                .find(info => info.region === selectedRegion)
-                                                                                ?.data.find(map => map.name === selectedMap)
-                                                                                ?.layers[index];
-                                                                                if (layer) {
-                                                                                    setSelectedTilemap(layer.tilemap);
-                                                                                }
-                                                                            }}
-                                                                        >
-                                                                            <Box {...provided.dragHandleProps} sx={{ mr: 1, display: 'flex', alignItems: 'center' }}>
-                                                                                <DragIndicatorIcon />
-                                                                            </Box>
-                                                                            <ListItemText primary={layer.name || `图层 ${index + 1}`} />
-                                                                        </ListItemButton>
-                                                                    )}
-                                                                </Draggable>
-                                                            ))}
-                                                        {provided.placeholder}
-                                                    </div>
-                                                )}
-                                            </Droppable>
-                                        </DragDropContext>
-                                    </List>
-                                </Paper>
-                            </Box>
-
-                            <Paper sx={{
-                                width: '50vh',
-                                mt: 2,
-                                height: '50vh',
-                                overflow: 'auto',
-                                backgroundColor: '#e0e0e0'
-                            }}>
-                                <Box
-                                    sx={{ position: 'relative' }}
-                                    onWheel={(e) => {
-                                        e.preventDefault();
-                                        const delta = e.deltaY > 0 ? -0.1 : 0.1;
-                                        setScale(prev => Math.max(0.1, Math.min(5, prev + delta)));
-                                    }}
-                                >
-                                    <canvas
-                                        ref={canvasRef}
-                                        style={{
-                                            display: 'block',
-                                            transform: `scale(${scale})`,
-                                            transformOrigin: 'top left'
                                         }}
-                                        width={(selectedMap ? (mapsInfo
-                                            ?.find(info => info.region === selectedRegion)
-                                            ?.data.find(map => map.name === selectedMap)
-                                            ?.width ?? 0) * tileSize : 0)
-                                        }
-                                        height={(selectedMap ? (mapsInfo
-                                            ?.find(info => info.region === selectedRegion)
-                                            ?.data.find(map => map.name === selectedMap)
-                                            ?.height ?? 0) * tileSize : 0)
-                                        }
-                                        onMouseDown={(e) => {
-                                            const rect = e.currentTarget.getBoundingClientRect();
-                                            const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
-                                            const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
-                                            if (e.button === 0) {
-                                                if (isEventMode) {
+                                    >
+                                        <canvas
+                                            ref={canvasRef}
+                                            style={{
+                                                display: 'block',
+                                                transform: `scale(${scale})`,
+                                                transformOrigin: 'top left'
+                                            }}
+                                            width={(selectedMap ? (mapsInfo
+                                                ?.find(info => info.region === selectedRegion)
+                                                ?.data.find(map => map.name === selectedMap)
+                                                ?.width ?? 0) * tileSize : 0)
+                                            }
+                                            height={(selectedMap ? (mapsInfo
+                                                ?.find(info => info.region === selectedRegion)
+                                                ?.data.find(map => map.name === selectedMap)
+                                                ?.height ?? 0) * tileSize : 0)
+                                            }
+                                            onMouseDown={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
+                                                const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
+                                                if (e.button === 0) {
+                                                    if (isEventMode) {
 
+                                                    }
+                                                    else {
+                                                        if (selectedLayer !== null && selectedTileId !== null && selectedRegion && selectedMap) {
+                                                            const targetMap = mapsInfo
+                                                            .find(info => info.region === selectedRegion)
+                                                            ?.data.find(map => map.name === selectedMap);
+                                                            if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
+                                                                targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
+                                                                drawMap();
+                                                            }
+                                                        }
+                                                    }
                                                 }
-                                                else {
-                                                    if (selectedLayer !== null && selectedTileId !== null && selectedRegion && selectedMap) {
+                                                else if (e.button === 2) {
+                                                    if (isEventMode) {
+
+                                                    }
+                                                    else {
+                                                        e.preventDefault();
                                                         const targetMap = mapsInfo
-                                                        .find(info => info.region === selectedRegion)
-                                                        ?.data.find(map => map.name === selectedMap);
+                                                            .find(info => info.region === selectedRegion)
+                                                            ?.data.find(map => map.name === selectedMap);
+
+                                                        if (targetMap && selectedLayer !== null && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
+                                                            const tileId = targetMap.layers[selectedLayer].tiles[y][x];
+                                                            setSelectedTileId(tileId);
+                                                        }
+                                                    }
+                                                }
+                                            }}
+                                            onMouseMove={(e) => {
+                                                const rect = e.currentTarget.getBoundingClientRect();
+                                                const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
+                                                const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
+
+                                                setMousePosition({ x, y });
+                                                drawPreview();
+
+                                                if (e.buttons === 1 && selectedLayer !== null && selectedTileId !== null) {
+                                                    if (isEventMode) {
+
+                                                    }
+                                                    else {
+                                                        const targetMap = mapsInfo
+                                                            .find(info => info.region === selectedRegion)
+                                                            ?.data.find(map => map.name === selectedMap);
+
                                                         if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
                                                             targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
                                                             drawMap();
                                                         }
                                                     }
                                                 }
-                                            }
-                                            else if (e.button === 2) {
-                                                if (isEventMode) {
-
-                                                }
-                                                else {
-                                                    e.preventDefault();
-                                                    const targetMap = mapsInfo
-                                                        .find(info => info.region === selectedRegion)
-                                                        ?.data.find(map => map.name === selectedMap);
-
-                                                    if (targetMap && selectedLayer !== null && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
-                                                        const tileId = targetMap.layers[selectedLayer].tiles[y][x];
-                                                        setSelectedTileId(tileId);
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                        onMouseMove={(e) => {
-                                            if (e.buttons === 1 && selectedLayer !== null && selectedTileId !== null) {
-                                                if (isEventMode) {
-
-                                                }
-                                                else {
-                                                    const rect = e.currentTarget.getBoundingClientRect();
-                                                    const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
-                                                    const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
-
-                                                    const targetMap = mapsInfo
-                                                        .find(info => info.region === selectedRegion)
-                                                        ?.data.find(map => map.name === selectedMap);
-
-                                                    if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
-                                                        targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
-                                                        drawMap();
-                                                    }
-                                                }
-                                            }
-                                        }}
-                                        onContextMenu={(e) => {
-                                            e.preventDefault();
-                                        }}
-                                    />
-                                </Box>
-                            </Paper>
-                        </Box>
-
-                        <Paper sx={{ width: '35vh', display: 'flex', flexDirection: 'column' }}>
-                            {!isEventMode &&
-                                <Box
-                                    sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-                                    onContextMenu={(e) => {
-                                        e.preventDefault();
-                                        setSelectedTileId(0);
-                                    }}
-                                >
-                                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                        <Tabs
-                                            value={selectedTilemap}
-                                            onChange={(_, value) => {
-                                                setSelectedTilemap(value);
-                                                if (selectedLayer !== null && selectedRegion && selectedMap) {
-                                                    const targetMap = mapsInfo
-                                                        .find(info => info.region === selectedRegion)
-                                                        ?.data.find(map => map.name === selectedMap);
-
-                                                    if (targetMap && targetMap.layers[selectedLayer]) {
-                                                        targetMap.layers[selectedLayer].tilemap = value;
-                                                        drawMap();
+                                            }}
+                                            onMouseLeave={() => {
+                                                setMousePosition(null);
+                                                if (previewCanvasRef.current) {
+                                                    const ctx = previewCanvasRef.current.getContext('2d');
+                                                    if (ctx) {
+                                                        ctx.clearRect(0, 0, previewCanvasRef.current.width, previewCanvasRef.current.height);
                                                     }
                                                 }
                                             }}
-                                        >
-                                            {tilemaps.map((tilemap) => (
-                                                <Tab
-                                                    key={tilemap.id}
-                                                    label={tilemap.name}
-                                                    value={tilemap.id}
-                                                />
-                                            ))}
-                                        </Tabs>
-                                    </Box>
+                                            onContextMenu={(e) => {
+                                                e.preventDefault();
+                                            }}
+                                        />
 
-                                    <Box sx={{
-                                        flex: 1,
-                                        overflow: 'auto',
-                                        p: 1,
-                                        display: 'grid',
-                                        gridTemplateColumns: 'repeat(auto-fill, 32px)',
-                                        gap: 1
-                                    }}>
-                                        {tilemapImage && Array.from(
-                                            { length: Math.floor((tilemapImage.height / tileSize) * 8) },
-                                            (_, i) => (
-                                                <Box
-                                                    key={i}
-                                                    sx={{
-                                                        width: 32,
-                                                        height: 32,
-                                                        border: selectedTileId === (i + 1) ? '2px solid #1976d2' : '1px solid #ccc',
-                                                        cursor: 'pointer',
-                                                        backgroundImage: `url(${tilemapImage.src})`,
-                                                        backgroundPosition: `-${((i + 1) % 8) * 32}px -${Math.floor((i + 1) / 8) * 32}px`,
-                                                        '&:hover': {
-                                                            border: '2px solid #1976d2'
-                                                        }
-                                                    }}
-                                                    onClick={() => setSelectedTileId(i + 1)}
-                                                />
-                                            )
-                                        )}
+                                        <canvas
+                                            ref={previewCanvasRef}
+                                            style={{
+                                                position: 'absolute',
+                                                top: 0,
+                                                left: 0,
+                                                pointerEvents: 'none',
+                                                transform: `scale(${scale})`,
+                                                transformOrigin: 'top left'
+                                            }}
+                                            width={(selectedMap ? (mapsInfo
+                                                ?.find(info => info.region === selectedRegion)
+                                                ?.data.find(map => map.name === selectedMap)
+                                                ?.width ?? 0) * tileSize : 0)
+                                            }
+                                            height={(selectedMap ? (mapsInfo
+                                                ?.find(info => info.region === selectedRegion)
+                                                ?.data.find(map => map.name === selectedMap)
+                                                ?.height ?? 0) * tileSize : 0)
+                                            }
+                                        />
                                     </Box>
-                                </Box>
-                            }
-                        </Paper>
+                                </Paper>
+                            </Box>
+
+                            <Paper sx={{ width: '35vh', display: 'flex', flexDirection: 'column' }}>
+                                {!isEventMode &&
+                                    <Box
+                                        sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            setSelectedTileId(0);
+                                        }}
+                                    >
+                                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                            <Tabs
+                                                value={selectedTilemap}
+                                                onChange={(_, value) => {
+                                                    setSelectedTilemap(value);
+                                                    if (selectedLayer !== null && selectedRegion && selectedMap) {
+                                                        const targetMap = mapsInfo
+                                                            .find(info => info.region === selectedRegion)
+                                                            ?.data.find(map => map.name === selectedMap);
+
+                                                        if (targetMap && targetMap.layers[selectedLayer]) {
+                                                            targetMap.layers[selectedLayer].tilemap = value;
+                                                            drawMap();
+                                                        }
+                                                    }
+                                                }}
+                                            >
+                                                {tilemaps.map((tilemap) => (
+                                                    <Tab
+                                                        key={tilemap.id}
+                                                        label={tilemap.name}
+                                                        value={tilemap.id}
+                                                    />
+                                                ))}
+                                            </Tabs>
+                                        </Box>
+
+                                        <Box sx={{
+                                            flex: 1,
+                                            overflow: 'auto',
+                                            p: 1,
+                                            display: 'grid',
+                                            gridTemplateColumns: 'repeat(8, 32px)',
+                                            gap: 1,
+                                            justifyContent: 'center'
+                                        }}>
+                                            {tilemapImage && Array.from(
+                                                { length: Math.floor((tilemapImage.height / tileSize) * 8) },
+                                                (_, i) => (
+                                                    <Box
+                                                        key={i}
+                                                        sx={{
+                                                            width: 32,
+                                                            height: 32,
+                                                            border: selectedTileId === (i + 1) ? '2px solid #1976d2' : '1px solid #ccc',
+                                                            cursor: 'pointer',
+                                                            backgroundImage: `url(${tilemapImage.src})`,
+                                                            backgroundPosition: `-${((i + 1) % 8) * 32}px -${Math.floor((i + 1) / 8) * 32}px`,
+                                                            '&:hover': {
+                                                                border: '2px solid #1976d2'
+                                                            }
+                                                        }}
+                                                        onClick={() => setSelectedTileId(i + 1)}
+                                                    />
+                                                )
+                                            )}
+                                        </Box>
+                                    </Box>
+                                }
+                            </Paper>
+                        </Box>
                     </Box>
-                </Box>
-            )}
+                )}
+            </Box>
             <SingleInput
                 label="新建图层"
                 inputType="图层名称"
