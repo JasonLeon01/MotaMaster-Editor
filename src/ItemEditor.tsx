@@ -11,9 +11,10 @@ const path = window.require('path');
 interface ItemEditorProps {
     items: Item[];
     root: string;
+    cellSize: number;
 }
 
-function ItemEditor({ items, root }: ItemEditorProps) {
+function ItemEditor({ items, root, cellSize }: ItemEditorProps) {
     const [selectedItem, setSelectedItem] = useState<Item | null>(null);
     const [newItemDialog, setNewItemDialog] = useState(false);
     const [newItemName, setNewItemName] = useState('');
@@ -111,8 +112,8 @@ function ItemEditor({ items, root }: ItemEditorProps) {
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / 32);
-        const y = Math.floor((e.clientY - rect.top) / 32);
+        const x = Math.floor((e.clientX - rect.left) / cellSize);
+        const y = Math.floor((e.clientY - rect.top) / cellSize);
         handleCellSelect(y, x);
     };
 
@@ -184,10 +185,10 @@ function ItemEditor({ items, root }: ItemEditorProps) {
                     <Box
                         sx={{
                             position: 'absolute',
-                            top: selectedItem.file[1] * 32,
-                            left: selectedItem.file[2] * 32,
-                            width: '32px',
-                            height: '32px',
+                            top: selectedItem.file[1] * cellSize,
+                            left: selectedItem.file[2] * cellSize,
+                            width: `${cellSize}px`,
+                            height: `${cellSize}px`,
                             border: '2px solid black',
                             boxSizing: 'border-box',
                             pointerEvents: 'none'

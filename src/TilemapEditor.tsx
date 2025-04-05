@@ -13,11 +13,12 @@ const path = window.require('path');
 interface TilemapEditorProps {
     tilemaps: Tilemap[];
     root: string;
+    cellSize: number;
 }
 
 type EditMode = 'walkable' | 'collision' | 'event';
 
-function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
+function TilemapEditor({ tilemaps, root, cellSize }: TilemapEditorProps) {
     const [selectedTilemap, setSelectedTilemap] = useState<Tilemap | null>(null);
     const [newTilemapDialog, setNewTilemapDialog] = useState(false);
     const [newTilemapName, setNewTilemapName] = useState('');
@@ -149,8 +150,8 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
                 return;
             }
 
-            const rows = Math.floor(img.height / 32);
-            const cols = Math.floor(img.width / 32);
+            const rows = Math.floor(img.height / cellSize);
+            const cols = Math.floor(img.width / cellSize);
 
             const updated = {
                 ...selectedTilemap,
@@ -395,8 +396,8 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
                                         width: '100%',
                                         height: '100%',
                                         display: 'grid',
-                                        gridTemplateColumns: `repeat(${selectedTilemap.walkable[0].length}, 32px)`,
-                                        gridTemplateRows: `repeat(${selectedTilemap.walkable.length}, 32px)`,
+                                        gridTemplateColumns: `repeat(8, ${cellSize}px)`,
+                                        gridTemplateRows: `repeat(${selectedTilemap.walkable.length}, ${cellSize}px)`,
                                         backgroundColor: 'rgba(255, 255, 255, 0.1)'
                                     }}>
                                         {selectedTilemap.walkable.map((row, y) =>
@@ -404,8 +405,8 @@ function TilemapEditor({ tilemaps, root }: TilemapEditorProps) {
                                                 <Box
                                                     key={`${x}-${y}`}
                                                     sx={{
-                                                        width: 32,
-                                                        height: 32,
+                                                        width: cellSize,
+                                                        height: cellSize,
                                                         border: '1px solid rgba(255,255,255,0.3)',
                                                         display: 'flex',
                                                         justifyContent: 'center',

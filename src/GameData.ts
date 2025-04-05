@@ -7,6 +7,7 @@ export interface Config {
         font_size: number;
         windowskin_file: string;
         window_opacity: number;
+        cell_size: number;
     },
     audio: {
         cursor_se: string;
@@ -132,6 +133,7 @@ export class GameDataRecorder {
                 font_size: 0,
                 windowskin_file: "",
                 window_opacity: 0,
+                cell_size: 32,
             },
             audio: {
                 cursor_se: "",

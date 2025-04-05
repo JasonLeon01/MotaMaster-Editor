@@ -31,6 +31,7 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
             { label: "默认字号", editable: true, path: "", multiple: false },
             { label: "窗口风格", editable: false, path: "assets/system/", multiple: false },
             { label: "窗口默认不透明度", editable: true, path: "", multiple: false },
+            { label: "单元尺寸", editable: true, path: "", multiple: false },
         ],
         [
             { label: "选择SE", editable: false, path: "assets/sounds", multiple: false },
@@ -53,7 +54,6 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
             column.forEach((item, itemIndex) => {
                 const key = `${columnIndex}-${itemIndex}`;
                 if (columnIndex === 0) {
-                    // system 配置
                     const configKey = getConfigKey(item.label, 'system');
                     if (configKey) {
                         if (typeof configs.system[configKey as keyof typeof configs.system] === 'string') {
@@ -87,6 +87,7 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
             "默认字号": { section: 'system', key: 'font_size' },
             "窗口风格": { section: 'system', key: 'windowskin_file' },
             "窗口默认不透明度": { section: 'system', key: 'window_opacity' },
+            "单元尺寸": { section:'system', key: 'cell_size' },
             "选择SE": { section: 'audio', key: 'cursor_se' },
             "确认SE": { section: 'audio', key: 'decision_se' },
             "取消SE": { section: 'audio', key: 'cancel_se' },
@@ -138,20 +139,10 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
         if (label === "默认字号") {
             if (value!== '') {
                 if (!/^\d+$/.test(value)) {
-                    setSnackbar({
-                        open: true,
-                        message: '请输入有效的数字',
-                        severity: 'warning'
-                    });
-                    return false;
+                    return { result: false, hint: '请输入有效的数字' };
                 }
                 if (parseInt(value) > 64) {
-                    setSnackbar({
-                        open: true,
-                        message: '字号不能大于64',
-                        severity: 'warning'
-                    });
-                    return false;
+                    return { result: false, hint: '字号不能大于64' };
                 }
             }
         }
@@ -159,40 +150,75 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
         if (label === "窗口默认不透明度") {
             if (value!== '') {
                 if (!/^\d+$/.test(value)) {
-                    setSnackbar({
-                        open: true,
-                        message: '请输入有效的数字',
-                        severity: 'warning'
-                    });
-                    return false;
+                    return { result: false, hint: '请输入有效的数字' };
                 }
                 if (parseInt(value) > 255) {
-                    setSnackbar({
-                        open: true,
-                        message: '不透明度不能大于255',
-                        severity: 'warning'
-                    });
-                    return false;
+                    return { result: false, hint: '不透明度不能大于255' };
                 }
             }
         }
 
-        return true;
+        if (label === "单元尺寸") {
+            if (value!== '') {
+                if (!/^\d+$/.test(value)) {
+                    return { result: false, hint: '请输入有效的数字' };
+                }
+                if (parseInt(value) === 0) {
+                    return { result: false, hint: '单元尺寸不能为0' };
+                }
+                if (parseInt(value) > 128) {
+                    return { result: false, hint: '单元尺寸不能大于128' };
+                }
+                if (parseInt(value) % 16 !== 0) {
+                    return { result: false, hint: '单元尺寸必须为16的倍数' };
+                }
+            }
+        }
+
+        return { result: true, hint: '' };
     }
 
     const handleTextChange = (key: string, value: string, item: any) => {
-       if (!judgeValue(item.label, value)) {
-           return;
-       }
+        const judgeResult = judgeValue(item.label, value);
+        if (!judgeResult.result) {
+            Promise.resolve().then(() => {
+                setSnackbar({
+                    open: true,
+                    message: judgeResult.hint,
+                    severity: 'warning'
+                });
+            });
+        }
+
         setSystemData(prev => ({
             ...prev,
             [key]: value
         }));
+    };
+
+    const handleTextBlur = (key: string, value: string, item: any) => {
+        const judgeResult = judgeValue(item.label, value);
         const [columnIndex, itemIndex] = key.split('-').map(Number);
         const configKey = getConfigKey(
             item.label,
             columnIndex === 0 ? 'system' : 'audio'
         );
+        if (!judgeResult.result) {
+            if (configKey) {
+                const originalValue = GameData.getConfigAt(
+                    columnIndex === 0 ? 'system' : 'audio',
+                    configKey as keyof Config[keyof Config]
+                ) as (string | number | string[]);
+                setSystemData(prev => ({
+                    ...prev,
+                    [key]: Array.isArray(originalValue)
+                        ? originalValue.join(', ')
+                        : originalValue?.toString() || ''
+                }));
+            }
+            return;
+        }
+
         if (configKey) {
             if (columnIndex === 0) {
                 configs.system[configKey as keyof typeof configs.system] = value as never;
@@ -236,6 +262,7 @@ function SystemSetting({ configs, root }: SystemSettingProps) {
                                                         : "")
                                             }
                                             onChange={(e) => item.editable && handleTextChange(key, e.target.value, item)}
+                                            onBlur={(e) => item.editable && handleTextBlur(key, e.target.value, item)}
                                             disabled={!item.editable}
                                             sx={{ flex: 1 }}
                                         />

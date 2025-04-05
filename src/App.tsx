@@ -530,6 +530,7 @@ function App() {
           root={GameData.getRoot()}
           mapsInfo={GameData.getAllMapsInfo()}
           mapRecord={GameData.getAllMapsRecord()}
+          cellSize={GameData.getConfigAt('system', 'cell_size' as keyof Config[keyof Config])}
         />;
       case 1:
         return <ActorEditor
@@ -542,24 +543,28 @@ function App() {
           key={refreshKey}
           items={GameData.getAllItemInfo()}
           root={GameData.getRoot()}
+          cellSize={GameData.getConfigAt('system', 'cell_size' as keyof Config[keyof Config])}
         />;
       case 3:
         return <EquipEditor
           key={refreshKey}
           equips={GameData.getAllEquipInfo()}
           root={GameData.getRoot()}
+          cellSize={GameData.getConfigAt('system', 'cell_size' as keyof Config[keyof Config])}
         />;
       case 4:
         return <EnemyEditor
           key={refreshKey}
           enemies={GameData.getAllEnemyInfo()}
           root={GameData.getRoot()}
+          cellSize={GameData.getConfigAt('system', 'cell_size' as keyof Config[keyof Config])}
         />;
       case 5:
         return <TilemapEditor
           key={refreshKey}
           tilemaps={GameData.getAllTilemapInfo()}
           root={GameData.getRoot()}
+          cellSize={GameData.getConfigAt('system', 'cell_size' as keyof Config[keyof Config])}
         />;
       case 8:
         return <SystemSetting

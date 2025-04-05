@@ -13,9 +13,10 @@ const path = window.require('path');
 interface EquipEditorProps {
     equips: Equip[];
     root: string;
+    cellSize: number;
 }
 
-function EquipEditor({ equips, root }: EquipEditorProps) {
+function EquipEditor({ equips, root, cellSize }: EquipEditorProps) {
     const [selectedEquip, setSelectedEquip] = useState<Equip | null>(null);
     const [newEquipDialog, setNewEquipDialog] = useState(false);
     const [newEquipName, setNewEquipName] = useState('');
@@ -146,8 +147,8 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const x = Math.floor((e.clientX - rect.left) / 32);
-        const y = Math.floor((e.clientY - rect.top) / 32);
+        const x = Math.floor((e.clientX - rect.left) / cellSize);
+        const y = Math.floor((e.clientY - rect.top) / cellSize);
         handleCellSelect(y, x);
     };
 
@@ -290,10 +291,10 @@ function EquipEditor({ equips, root }: EquipEditorProps) {
                     <Box
                         sx={{
                             position: 'absolute',
-                            top: selectedEquip.file[1] * 32,
-                            left: selectedEquip.file[2] * 32,
-                            width: '32px',
-                            height: '32px',
+                            top: selectedEquip.file[1] * cellSize,
+                            left: selectedEquip.file[2] * cellSize,
+                            width: `${cellSize}px`,
+                            height: `${cellSize}px`,
                             border: '2px solid black',
                             boxSizing: 'border-box',
                             pointerEvents: 'none'

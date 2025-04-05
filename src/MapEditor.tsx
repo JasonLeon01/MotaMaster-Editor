@@ -16,9 +16,10 @@ interface MapEditorProps {
     root: string;
     mapsInfo: MapInfo[];
     mapRecord: Map<string, Map<string, Map_>>;
+    cellSize: number;
 }
 
-function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
+function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
     const [regions, setRegions] = useState<string[]>([]);
     const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
     const [selectedMap, setSelectedMap] = useState<string | null>(null);
@@ -44,7 +45,6 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     } | null>(null);
     const [currentPath, setCurrentPath] = useState("");
     const [currentAudioType, setCurrentAudioType] = useState<"bgm" | "bgs" | null>(null);
-    const [tileSize, setTileSize] = useState(32);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [scale, setScale] = useState(1);
     const [tilemaps, setTilemaps] = useState<Tilemap[]>([]);
@@ -431,22 +431,22 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         const ctx = canvas.getContext('2d');
         if (!ctx) return;
 
-        if (canvas.width !== targetMap.width * tileSize || canvas.height !== targetMap.height * tileSize) {
-            canvas.width = targetMap.width * tileSize;
-            canvas.height = targetMap.height * tileSize;
+        if (canvas.width !== targetMap.width * cellSize || canvas.height !== targetMap.height * cellSize) {
+            canvas.width = targetMap.width * cellSize;
+            canvas.height = targetMap.height * cellSize;
         }
 
         const drawBackground = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            const cellSize = 16;
-            for (let y = 0; y < canvas.height; y += cellSize) {
-                for (let x = 0; x < canvas.width; x += cellSize) {
-                    if ((x / cellSize + y / cellSize) % 2 === 0) {
+            const gridSize = cellSize / 2;
+            for (let y = 0; y < canvas.height; y += gridSize) {
+                for (let x = 0; x < canvas.width; x += gridSize) {
+                    if ((x / gridSize + y / gridSize) % 2 === 0) {
                         ctx.fillStyle = '#f0f0f0';
                     } else {
                         ctx.fillStyle = '#ffffff';
                     }
-                    ctx.fillRect(x, y, cellSize, cellSize);
+                    ctx.fillRect(x, y, gridSize, gridSize);
                 }
             }
         };
@@ -492,19 +492,19 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                         const tileId = layer.tiles[y][x];
                         if (tileId === 0) continue;
 
-                        const srcX = (tileId % 8) * tileSize;
-                        const srcY = Math.floor(tileId / 8) * tileSize;
+                        const srcX = (tileId % 8) * cellSize;
+                        const srcY = Math.floor(tileId / 8) * cellSize;
 
                         ctx.drawImage(
                             img,
                             srcX,
                             srcY,
-                            tileSize,
-                            tileSize,
-                            x * tileSize,
-                            y * tileSize,
-                            tileSize,
-                            tileSize
+                            cellSize,
+                            cellSize,
+                            x * cellSize,
+                            y * cellSize,
+                            cellSize,
+                            cellSize
                         );
                     }
                 }
@@ -513,7 +513,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         };
         renderLayers();
 
-    }, [selectedRegion, selectedMap, mapsInfo, tileSize, root, selectedLayer]);
+    }, [selectedRegion, selectedMap, mapsInfo, cellSize, root, selectedLayer]);
 
     const drawPreview = useCallback(() => {
         if (!selectedRegion || !selectedMap || !previewCanvasRef.current || !mousePosition || isEventMode || selectedTileId === null) return;
@@ -536,19 +536,19 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         if (selectedLayer === null) return;
 
         if (selectedTileId === 0) {
-            const gridSize = 16;
+            const gridSize = cellSize / 2;
             ctx.globalAlpha = 0.5;
 
-            for (let i = 0; i < tileSize; i += gridSize) {
-                for (let j = 0; j < tileSize; j += gridSize) {
+            for (let i = 0; i < cellSize; i += gridSize) {
+                for (let j = 0; j < cellSize; j += gridSize) {
                     if ((i / gridSize + j / gridSize) % 2 === 0) {
                         ctx.fillStyle = '#ffffff';
                     } else {
                         ctx.fillStyle = '#cccccc';
                     }
                     ctx.fillRect(
-                        x * tileSize + i,
-                        y * tileSize + j,
+                        x * cellSize + i,
+                        y * cellSize + j,
                         gridSize,
                         gridSize
                     );
@@ -557,7 +557,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
 
             ctx.strokeStyle = '#000000';
             ctx.lineWidth = 1;
-            ctx.strokeRect(x * tileSize, y * tileSize, tileSize, tileSize);
+            ctx.strokeRect(x * cellSize, y * cellSize, cellSize, cellSize);
 
             ctx.globalAlpha = 1;
             return;
@@ -567,21 +567,21 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         if (!img) return;
 
         ctx.globalAlpha = 0.5;
-        const srcX = (selectedTileId % 8) * tileSize;
-        const srcY = Math.floor(selectedTileId / 8) * tileSize;
+        const srcX = (selectedTileId % 8) * cellSize;
+        const srcY = Math.floor(selectedTileId / 8) * cellSize;
         ctx.drawImage(
             img,
             srcX,
             srcY,
-            tileSize,
-            tileSize,
-            x * tileSize,
-            y * tileSize,
-            tileSize,
-            tileSize
+            cellSize,
+            cellSize,
+            x * cellSize,
+            y * cellSize,
+            cellSize,
+            cellSize
         );
         ctx.globalAlpha = 1;
-    }, [selectedRegion, selectedMap, mousePosition, isEventMode, selectedTileId, selectedLayer, selectedTilemap, tileSize, mapsInfo, imageCache]);
+    }, [selectedRegion, selectedMap, mousePosition, isEventMode, selectedTileId, selectedLayer, selectedTilemap, cellSize, mapsInfo, imageCache]);
 
     useEffect(() => {
         drawMap();
@@ -814,17 +814,17 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                                             width={(selectedMap ? (mapsInfo
                                                 ?.find(info => info.region === selectedRegion)
                                                 ?.data.find(map => map.name === selectedMap)
-                                                ?.width ?? 0) * tileSize : 0)
+                                                ?.width ?? 0) * cellSize : 0)
                                             }
                                             height={(selectedMap ? (mapsInfo
                                                 ?.find(info => info.region === selectedRegion)
                                                 ?.data.find(map => map.name === selectedMap)
-                                                ?.height ?? 0) * tileSize : 0)
+                                                ?.height ?? 0) * cellSize : 0)
                                             }
                                             onMouseDown={(e) => {
                                                 const rect = e.currentTarget.getBoundingClientRect();
-                                                const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
-                                                const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
+                                                const x = Math.floor((e.clientX - rect.left) / (cellSize * scale));
+                                                const y = Math.floor((e.clientY - rect.top) / (cellSize * scale));
                                                 if (e.button === 0) {
                                                     if (isEventMode) {
 
@@ -860,8 +860,8 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                                             }}
                                             onMouseMove={(e) => {
                                                 const rect = e.currentTarget.getBoundingClientRect();
-                                                const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
-                                                const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
+                                                const x = Math.floor((e.clientX - rect.left) / (cellSize * scale));
+                                                const y = Math.floor((e.clientY - rect.top) / (cellSize * scale));
 
                                                 setMousePosition({ x, y });
                                                 drawPreview();
@@ -909,12 +909,12 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                                             width={(selectedMap ? (mapsInfo
                                                 ?.find(info => info.region === selectedRegion)
                                                 ?.data.find(map => map.name === selectedMap)
-                                                ?.width ?? 0) * tileSize : 0)
+                                                ?.width ?? 0) * cellSize : 0)
                                             }
                                             height={(selectedMap ? (mapsInfo
                                                 ?.find(info => info.region === selectedRegion)
                                                 ?.data.find(map => map.name === selectedMap)
-                                                ?.height ?? 0) * tileSize : 0)
+                                                ?.height ?? 0) * cellSize : 0)
                                             }
                                         />
                                     </Box>
@@ -962,22 +962,22 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                                             overflow: 'auto',
                                             p: 1,
                                             display: 'grid',
-                                            gridTemplateColumns: 'repeat(8, 32px)',
+                                            gridTemplateColumns: `repeat(8, ${cellSize}px)`,
                                             gap: 1,
                                             justifyContent: 'center'
                                         }}>
                                             {tilemapImage && Array.from(
-                                                { length: Math.floor((tilemapImage.height / tileSize) * 8) },
+                                                { length: Math.floor((tilemapImage.height / cellSize) * 8) },
                                                 (_, i) => (
                                                     <Box
                                                         key={i}
                                                         sx={{
-                                                            width: 32,
-                                                            height: 32,
+                                                            width: cellSize,
+                                                            height: cellSize,
                                                             border: selectedTileId === (i + 1) ? '2px solid #1976d2' : '1px solid #ccc',
                                                             cursor: 'pointer',
                                                             backgroundImage: `url(${tilemapImage.src})`,
-                                                            backgroundPosition: `-${((i + 1) % 8) * 32}px -${Math.floor((i + 1) / 8) * 32}px`,
+                                                            backgroundPosition: `-${((i + 1) % 8) * cellSize}px -${Math.floor((i + 1) / 8) * cellSize}px`,
                                                             '&:hover': {
                                                                 border: '2px solid #1976d2'
                                                             }

@@ -13,9 +13,10 @@ const path = window.require('path');
 interface EnemyEditorProps {
     enemies: Enemy[];
     root: string;
+    cellSize: number;
 }
 
-function EnemyEditor({ enemies, root }: EnemyEditorProps) {
+function EnemyEditor({ enemies, root, cellSize }: EnemyEditorProps) {
     const [selectedEnemy, setSelectedEnemy] = useState<Enemy | null>(null);
     const [newEnemyDialog, setNewEnemyDialog] = useState(false);
     const [newEnemyName, setNewEnemyName] = useState('');
@@ -157,7 +158,7 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
 
     const handleImageClick = (e: React.MouseEvent<HTMLImageElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
-        const y = Math.floor((e.clientY - rect.top) / 32);
+        const y = Math.floor((e.clientY - rect.top) / cellSize);
         handleCellSelect(y);
     };
 
@@ -630,10 +631,10 @@ function EnemyEditor({ enemies, root }: EnemyEditorProps) {
                                                 <Box
                                                     sx={{
                                                         position: 'absolute',
-                                                        top: selectedEnemy.file[1] * 32,
+                                                        top: selectedEnemy.file[1] * cellSize,
                                                         left: 0,
                                                         width: `${imageWidth}px`,
-                                                        height: '32px',
+                                                        height: `${cellSize}px`,
                                                         border: '2px solid black',
                                                         boxSizing: 'border-box',
                                                         pointerEvents: 'none'
