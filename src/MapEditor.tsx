@@ -27,7 +27,7 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
     const [newRegionDialog, setNewRegionDialog] = useState(false);
     const [newMapDialog, setNewMapDialog] = useState(false);
     const [targetRegionMaps, setTargetRegionMaps] = useState<Array<{id: string; label: string}>>([]);
-    const [isEventMode, setIsEventMode] = useState(true);
+    const [isEventMode, setIsEventMode] = useState(false);
     const [imageCache, setImageCache] = useState<Map<number, HTMLImageElement>>(new Map());
     const [selectedLayer, setSelectedLayer] = useState<number | null>(null);
     const [newLayerName, setNewLayerName] = useState('');
@@ -82,6 +82,12 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
         const allTilemaps = GameData.getAllTilemapInfo();
         setTilemaps(allTilemaps);
     }, []);
+
+    useEffect(() => {
+        if (isEventMode) {
+            setSelectedTileId(0);
+        }
+    }, [isEventMode]);
 
     const handleCreateRegion = () => {
         if (!newRegionName.trim()) {
@@ -730,41 +736,56 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                                             const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
                                             const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
                                             if (e.button === 0) {
-                                                if (selectedLayer !== null && selectedTileId !== null && selectedRegion && selectedMap) {
-                                                    const targetMap = mapsInfo
-                                                    .find(info => info.region === selectedRegion)
-                                                    ?.data.find(map => map.name === selectedMap);
-                                                    if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
-                                                        targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
-                                                        drawMap();
+                                                if (isEventMode) {
+
+                                                }
+                                                else {
+                                                    if (selectedLayer !== null && selectedTileId !== null && selectedRegion && selectedMap) {
+                                                        const targetMap = mapsInfo
+                                                        .find(info => info.region === selectedRegion)
+                                                        ?.data.find(map => map.name === selectedMap);
+                                                        if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
+                                                            targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
+                                                            drawMap();
+                                                        }
                                                     }
                                                 }
                                             }
                                             else if (e.button === 2) {
-                                                e.preventDefault();
-                                                const targetMap = mapsInfo
-                                                    .find(info => info.region === selectedRegion)
-                                                    ?.data.find(map => map.name === selectedMap);
+                                                if (isEventMode) {
 
-                                                if (targetMap && selectedLayer !== null && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
-                                                    const tileId = targetMap.layers[selectedLayer].tiles[y][x];
-                                                    setSelectedTileId(tileId);
+                                                }
+                                                else {
+                                                    e.preventDefault();
+                                                    const targetMap = mapsInfo
+                                                        .find(info => info.region === selectedRegion)
+                                                        ?.data.find(map => map.name === selectedMap);
+
+                                                    if (targetMap && selectedLayer !== null && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
+                                                        const tileId = targetMap.layers[selectedLayer].tiles[y][x];
+                                                        setSelectedTileId(tileId);
+                                                    }
                                                 }
                                             }
                                         }}
                                         onMouseMove={(e) => {
                                             if (e.buttons === 1 && selectedLayer !== null && selectedTileId !== null) {
-                                                const rect = e.currentTarget.getBoundingClientRect();
-                                                const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
-                                                const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
+                                                if (isEventMode) {
 
-                                                const targetMap = mapsInfo
-                                                    .find(info => info.region === selectedRegion)
-                                                    ?.data.find(map => map.name === selectedMap);
+                                                }
+                                                else {
+                                                    const rect = e.currentTarget.getBoundingClientRect();
+                                                    const x = Math.floor((e.clientX - rect.left) / (tileSize * scale));
+                                                    const y = Math.floor((e.clientY - rect.top) / (tileSize * scale));
 
-                                                if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
-                                                    targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
-                                                    drawMap();
+                                                    const targetMap = mapsInfo
+                                                        .find(info => info.region === selectedRegion)
+                                                        ?.data.find(map => map.name === selectedMap);
+
+                                                    if (targetMap && x >= 0 && x < targetMap.width && y >= 0 && y < targetMap.height) {
+                                                        targetMap.layers[selectedLayer].tiles[y][x] = selectedTileId;
+                                                        drawMap();
+                                                    }
                                                 }
                                             }
                                         }}
@@ -777,70 +798,72 @@ function MapEditor({ root, mapsInfo, mapRecord }: MapEditorProps) {
                         </Box>
 
                         <Paper sx={{ width: '35vh', display: 'flex', flexDirection: 'column' }}>
-                            <Box
-                                sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
-                                onContextMenu={(e) => {
-                                    e.preventDefault();
-                                    setSelectedTileId(0);
-                                }}
-                            >
-                                <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                                    <Tabs
-                                        value={selectedTilemap}
-                                        onChange={(_, value) => {
-                                            setSelectedTilemap(value);
-                                            if (selectedLayer !== null && selectedRegion && selectedMap) {
-                                                const targetMap = mapsInfo
-                                                    .find(info => info.region === selectedRegion)
-                                                    ?.data.find(map => map.name === selectedMap);
+                            {!isEventMode &&
+                                <Box
+                                    sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
+                                    onContextMenu={(e) => {
+                                        e.preventDefault();
+                                        setSelectedTileId(0);
+                                    }}
+                                >
+                                    <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                                        <Tabs
+                                            value={selectedTilemap}
+                                            onChange={(_, value) => {
+                                                setSelectedTilemap(value);
+                                                if (selectedLayer !== null && selectedRegion && selectedMap) {
+                                                    const targetMap = mapsInfo
+                                                        .find(info => info.region === selectedRegion)
+                                                        ?.data.find(map => map.name === selectedMap);
 
-                                                if (targetMap && targetMap.layers[selectedLayer]) {
-                                                    targetMap.layers[selectedLayer].tilemap = value;
-                                                    drawMap();
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        {tilemaps.map((tilemap) => (
-                                            <Tab
-                                                key={tilemap.id}
-                                                label={tilemap.name}
-                                                value={tilemap.id}
-                                            />
-                                        ))}
-                                    </Tabs>
-                                </Box>
-
-                                <Box sx={{
-                                    flex: 1,
-                                    overflow: 'auto',
-                                    p: 1,
-                                    display: 'grid',
-                                    gridTemplateColumns: 'repeat(auto-fill, 32px)',
-                                    gap: 1
-                                }}>
-                                    {tilemapImage && Array.from(
-                                        { length: Math.floor((tilemapImage.height / tileSize) * 8) },
-                                        (_, i) => (
-                                            <Box
-                                                key={i}
-                                                sx={{
-                                                    width: 32,
-                                                    height: 32,
-                                                    border: selectedTileId === (i + 1) ? '2px solid #1976d2' : '1px solid #ccc',
-                                                    cursor: 'pointer',
-                                                    backgroundImage: `url(${tilemapImage.src})`,
-                                                    backgroundPosition: `-${((i + 1) % 8) * 32}px -${Math.floor((i + 1) / 8) * 32}px`,
-                                                    '&:hover': {
-                                                        border: '2px solid #1976d2'
+                                                    if (targetMap && targetMap.layers[selectedLayer]) {
+                                                        targetMap.layers[selectedLayer].tilemap = value;
+                                                        drawMap();
                                                     }
-                                                }}
-                                                onClick={() => setSelectedTileId(i + 1)}
-                                            />
-                                        )
-                                    )}
+                                                }
+                                            }}
+                                        >
+                                            {tilemaps.map((tilemap) => (
+                                                <Tab
+                                                    key={tilemap.id}
+                                                    label={tilemap.name}
+                                                    value={tilemap.id}
+                                                />
+                                            ))}
+                                        </Tabs>
+                                    </Box>
+
+                                    <Box sx={{
+                                        flex: 1,
+                                        overflow: 'auto',
+                                        p: 1,
+                                        display: 'grid',
+                                        gridTemplateColumns: 'repeat(auto-fill, 32px)',
+                                        gap: 1
+                                    }}>
+                                        {tilemapImage && Array.from(
+                                            { length: Math.floor((tilemapImage.height / tileSize) * 8) },
+                                            (_, i) => (
+                                                <Box
+                                                    key={i}
+                                                    sx={{
+                                                        width: 32,
+                                                        height: 32,
+                                                        border: selectedTileId === (i + 1) ? '2px solid #1976d2' : '1px solid #ccc',
+                                                        cursor: 'pointer',
+                                                        backgroundImage: `url(${tilemapImage.src})`,
+                                                        backgroundPosition: `-${((i + 1) % 8) * 32}px -${Math.floor((i + 1) / 8) * 32}px`,
+                                                        '&:hover': {
+                                                            border: '2px solid #1976d2'
+                                                        }
+                                                    }}
+                                                    onClick={() => setSelectedTileId(i + 1)}
+                                                />
+                                            )
+                                        )}
+                                    </Box>
                                 </Box>
-                            </Box>
+                            }
                         </Paper>
                     </Box>
                 </Box>
