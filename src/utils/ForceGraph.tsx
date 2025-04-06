@@ -24,8 +24,9 @@ interface GraphLink {
 
 interface CommandNode {
     filename: string;
-    paramCount: number;
-    returnCount: number;
+    name: string;
+    params: string[];
+    nextsCount: number;
 }
 
 const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
@@ -55,8 +56,9 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
                     const result = await PythonParser(filePath);
                     return {
                         filename: file.replace('.py', ''),
-                        paramCount: result.paramCount ?? 0,
-                        returnCount: result.returnCount ?? 0
+                        name: result.name,
+                        params: result.params,
+                        nextsCount: result.nextsCount
                     };
                 }));
 
@@ -108,15 +110,21 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         setSelectionOpen(true);
     }, []);
 
-    const handleNodeSelect = useCallback((filename: string) => {
+    const handleNodeSelect = useCallback((selectedName: string) => {
+        const selectedNode = commandNodes.find(node =>
+            node.name === selectedName
+        );
+
+        if (!selectedNode) return;
+
         const newNode: GraphNode = {
             id: (nodes.length).toString(),
-            name: filename,
-            content: filename
+            name: selectedNode.name,
+            content: selectedNode.filename
         };
 
         setNodes(prevNodes => [...prevNodes, newNode]);
-    }, [nodes.length]);
+    }, [nodes.length, commandNodes]);
 
     const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const label = node.name;
@@ -168,7 +176,7 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
             />
             <SelectionList
                 open={selectionOpen}
-                items={commandNodes.map(node => node.filename)}
+                items={commandNodes.map(node => `${node.name}`)}
                 onClose={() => setSelectionOpen(false)}
                 onSelect={handleNodeSelect}
             />

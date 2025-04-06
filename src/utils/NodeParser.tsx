@@ -1,8 +1,9 @@
 const fs = window.require('fs');
 
 export interface ParserResult {
-    paramCount: number | null;
-    returnCount: number | null;
+    name: string;
+    params: string[];
+    nextsCount: number;
 }
 
 export const PythonParser = async (filePath: string): Promise<ParserResult> => {
@@ -10,22 +11,47 @@ export const PythonParser = async (filePath: string): Promise<ParserResult> => {
         const content = fs.readFileSync(filePath, 'utf-8');
         const lines = content.split('\n');
 
-        const funcLine = lines.find((line: string) => line.trim().startsWith('def execute'));
-        if (!funcLine) {
-            return { paramCount: null, returnCount: null };
+        const executeIndex = lines.findIndex((line: string) => line.trim().startsWith('def execute'));
+        if (executeIndex < 2) {
+            throw new Error('Comment not found before def execute');
         }
 
-        const paramMatch = funcLine.match(/\((.*?)\)/);
-        const paramCount = paramMatch ? paramMatch[1].split(',').filter((p: string) => p.trim()).length : 0;
+        const comment1 = lines[executeIndex - 2].trim();
+        const comment2 = lines[executeIndex - 1].trim();
+        const comment3 = lines[executeIndex - 3].trim();
 
-        const returnTypeMatch = funcLine.match(/-> *Tuple\[(.*?)\]/);
-        const returnCount = returnTypeMatch
-            ? returnTypeMatch[1].split(',').length
-            : null;
+        let name: string | null = null;
+        let params: string[] = [];
+        let nextsCount = 0;
 
-        return { paramCount, returnCount };
+        // 解析注释，去掉开头的 #
+        [comment1, comment2, comment3].forEach(comment => {
+            const cleanComment = comment.replace(/^#\s*/, '').trim();
+
+            if (cleanComment.startsWith('name:')) {
+                name = cleanComment.replace('name:', '').trim();
+            }
+            else if (cleanComment.startsWith('params:')) {
+                const paramsMatch = cleanComment.match(/params:\s*\[(.*?)\]/);
+                if (paramsMatch) {
+                    params = paramsMatch[1].split(',').map((p: string) => p.trim()).filter(Boolean);
+                }
+            }
+            else if (cleanComment.startsWith('nextsCount:')) {
+                const countMatch = cleanComment.match(/nextsCount:\s*(\d+)/);
+                if (countMatch) {
+                    nextsCount = parseInt(countMatch[1]);
+                }
+            }
+        });
+
+        if (!name || params.length === 0 || nextsCount === 0) {
+            throw new Error('Invalid comment format');
+        }
+
+        return { name, params, nextsCount };
     } catch (error) {
         console.error('Error parsing Python file:', error);
-        return { paramCount: null, returnCount: null };
+        throw error;
     }
 };
