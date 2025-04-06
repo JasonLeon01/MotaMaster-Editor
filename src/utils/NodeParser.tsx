@@ -3,7 +3,7 @@ const fs = window.require('fs');
 export interface ParserResult {
     name: string;
     params: string[];
-    nextsCount: number;
+    nexts: string[];
 }
 
 export const PythonParser = async (filePath: string): Promise<ParserResult> => {
@@ -22,9 +22,8 @@ export const PythonParser = async (filePath: string): Promise<ParserResult> => {
 
         let name: string | null = null;
         let params: string[] = [];
-        let nextsCount = 0;
+        let nexts: string[] = [];
 
-        // 解析注释，去掉开头的 #
         [comment1, comment2, comment3].forEach(comment => {
             const cleanComment = comment.replace(/^#\s*/, '').trim();
 
@@ -37,19 +36,19 @@ export const PythonParser = async (filePath: string): Promise<ParserResult> => {
                     params = paramsMatch[1].split(',').map((p: string) => p.trim()).filter(Boolean);
                 }
             }
-            else if (cleanComment.startsWith('nextsCount:')) {
-                const countMatch = cleanComment.match(/nextsCount:\s*(\d+)/);
-                if (countMatch) {
-                    nextsCount = parseInt(countMatch[1]);
+            else if (cleanComment.startsWith('nexts:')) {
+                const nextsMatch = cleanComment.match(/nexts:\s*\[(.*?)\]/);
+                if (nextsMatch) {
+                    nexts = nextsMatch[1].split(',').map((n: string) => n.trim()).filter(Boolean);
                 }
             }
         });
 
-        if (!name || params.length === 0 || nextsCount === 0) {
+        if (!name || params.length === 0 || nexts.length === 0) {
             throw new Error('Invalid comment format');
         }
 
-        return { name, params, nextsCount };
+        return { name, params, nexts };
     } catch (error) {
         console.error('Error parsing Python file:', error);
         throw error;
