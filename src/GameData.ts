@@ -77,7 +77,7 @@ export interface Tilemap {
 }
 
 export interface Order {
-    content: string;
+    id: string;
     params: string[];
 }
 

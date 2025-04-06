@@ -14,7 +14,14 @@ interface ForceGraphProps {
 interface GraphNode {
     id: string;
     name: string;
-    content: string;
+    paramsName: string[];
+    params: string[];
+    x?: number;
+    y?: number;
+    width?: number;
+    height?: number;
+    padding?: number;
+    lineHeight?: number;
 }
 
 interface GraphLink {
@@ -35,12 +42,18 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
     const [nodes, setNodes] = useState<GraphNode[]>([]);
     const [links, setLinks] = useState<GraphLink[]>([]);
+    const [draggingPort, setDraggingPort] = useState<{
+        nodeId: string;
+        isInput: boolean;
+        index: number;
+    } | null>(null);
 
     useEffect(() => {
         setNodes([{
             id: '0',
             name: 'Root',
-            content: ''
+            paramsName: [],
+            params: []
         }]);
     }, []);
 
@@ -74,14 +87,15 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     }, [root]);
 
     const graphData = useMemo(() => {
-        if (!event) {
+        if (!event || !commandNodes.length) {
             return { nodes, links };
         }
 
         const newNodes: GraphNode[] = event.orders.map((order, index) => ({
-            id: index.toString(),
-            name: `order ${index + 1}`,
-            content: order.content
+            id: order.id,
+            name: order.id,
+            paramsName: commandNodes.find(node => node.filename === order.id)?.params || [],
+            params: order.params
         }));
 
         const newLinks: GraphLink[] = [];
@@ -98,11 +112,7 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         setNodes(newNodes);
         setLinks(newLinks);
         return { nodes: newNodes, links: newLinks };
-    }, [event, nodes, links]);
-
-    const handleNodeClick = useCallback((node: GraphNode) => {
-        console.log('Clicked node:', node);
-    }, []);
+    }, [event, nodes, links, commandNodes.length, commandNodes]);
 
     const handleContextMenu = useCallback((event: MouseEvent) => {
         event.preventDefault();
@@ -120,40 +130,111 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         const newNode: GraphNode = {
             id: (nodes.length).toString(),
             name: selectedNode.name,
-            content: selectedNode.filename
+            paramsName: selectedNode.params,
+            params: [...Array(selectedNode.params.length)].map(() => '')
         };
+        console.log(newNode);
 
         setNodes(prevNodes => [...prevNodes, newNode]);
     }, [nodes.length, commandNodes]);
 
+    const isOverPort = useCallback((node: GraphNode, x: number, y: number, portIndex: number) => {
+        const portRadius = 3;
+        if (node.x !== undefined && node.y !== undefined && node.width !== undefined && node.height !== undefined) {
+            if (node.name === 'Root') {
+                const portX = node.x + node.width/2;
+                const portY = node.y;
+                return Math.sqrt(Math.pow(x - portX, 2) + Math.pow(y - portY, 2)) <= portRadius;
+            } else {
+                const nextsCount = commandNodes.find(n => n.name === node.name)?.nextsCount || 0;
+                if (portIndex >= nextsCount) return false;
+
+                const portSpacing = node.height / (nextsCount + 1);
+                const portX = node.x + node.width/2;
+                const portY = node.y - node.height/2 + portSpacing * (portIndex + 1);
+                return Math.sqrt(Math.pow(x - portX, 2) + Math.pow(y - portY, 2)) <= portRadius;
+            }
+        }
+        return false;
+    }, [commandNodes]);
+
+    const handleNodeClick = useCallback((node: GraphNode, event: any) => {
+        const { x: mouseX, y: mouseY } = event;
+        const nextsCount = commandNodes.find(n => n.name === node.name)?.nextsCount || 0;
+
+        for (let i = 0; i < nextsCount; i++) {
+            if (isOverPort(node, mouseX, mouseY, i)) {
+                console.log('Clicked port:', i);
+                return;
+            }
+        }
+    }, [commandNodes, isOverPort]);
+
     const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
-        const label = node.name;
         const fontSize = 12/globalScale;
         ctx.font = `${fontSize}px Arial`;
-        const textWidth = ctx.measureText(label).width;
-        const bckgDimensions = [textWidth + 8, fontSize + 4].map(n => n + fontSize/2);
+
+        const lines = [
+            node.name,
+            ...node.paramsName.map((name: string, index: number) =>
+                `${name}: ${node.params[index] || ''}`)
+        ];
+
+        const padding = fontSize;
+        const lineHeight = fontSize * 1.2;
+        const textWidth = Math.max(...lines.map(line => ctx.measureText(line).width));
+        const boxWidth = textWidth + padding * 2;
+        const boxHeight = lines.length * lineHeight + padding * 2;
+
+        node.width = boxWidth;
+        node.height = boxHeight;
+        node.padding = padding;
+        node.lineHeight = lineHeight;
 
         ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
         ctx.fillRect(
-            node.x - bckgDimensions[0]/2,
-            node.y - bckgDimensions[1]/2,
-            bckgDimensions[0],
-            bckgDimensions[1]
+            node.x - boxWidth/2,
+            node.y - boxHeight/2,
+            boxWidth,
+            boxHeight
         );
 
         ctx.strokeStyle = '#2B7CE9';
         ctx.strokeRect(
-            node.x - bckgDimensions[0]/2,
-            node.y - bckgDimensions[1]/2,
-            bckgDimensions[0],
-            bckgDimensions[1]
+            node.x - boxWidth/2,
+            node.y - boxHeight/2,
+            boxWidth,
+            boxHeight
         );
 
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.textBaseline = 'middle';
         ctx.fillStyle = 'black';
-        ctx.fillText(label, node.x, node.y);
-    }, []);
+        lines.forEach((line, index) => {
+            const y = node.y - boxHeight/2 + padding + lineHeight * (index + 0.5);
+            ctx.fillText(line, node.x - textWidth/2, y);
+        });
+
+        if (node.name === 'Root') {
+            const portX = node.x + boxWidth/2;
+            const portY = node.y;
+            ctx.beginPath();
+            ctx.arc(portX, portY, 3, 0, 2 * Math.PI);
+            ctx.fill();
+        } else {
+            const nextsCount = commandNodes.find(n => n.name === node.name)?.nextsCount || 0;
+            if (nextsCount > 0) {
+                const portSpacing = boxHeight / (nextsCount + 1);
+                for (let i = 0; i < nextsCount; i++) {
+                    const portX = node.x + boxWidth/2;
+                    const portY = node.y - boxHeight/2 + portSpacing * (i + 1);
+                    ctx.beginPath();
+                    ctx.arc(portX, portY, 3, 0, 2 * Math.PI);
+                    ctx.fill();
+                }
+            }
+        }
+    }, [commandNodes]);
 
     return (
         <>
@@ -165,6 +246,14 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
                 nodeCanvasObject={nodeCanvasObject}
                 nodeCanvasObjectMode={() => 'replace'}
                 onNodeClick={handleNodeClick}
+                onNodeDrag={(node, translate) => {
+                    if (draggingPort) {
+                        console.log('Dragging port:', draggingPort);
+                    }
+                }}
+                onNodeDragEnd={() => {
+                    setDraggingPort(null);
+                }}
                 onBackgroundRightClick={handleContextMenu}
                 linkDirectionalArrowLength={6}
                 linkDirectionalArrowRelPos={1}
