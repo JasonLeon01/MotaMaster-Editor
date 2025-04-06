@@ -1,30 +1,31 @@
-import { loadPyodide, type PyodideInterface } from 'pyodide';
+const fs = window.require('fs');
 
 export interface ParserResult {
     paramCount: number | null;
     returnCount: number | null;
 }
 
-export const PythonParser = (filePath: string) => {
-    const parsePythonScript = async () => {
-        let pyodide: PyodideInterface;
-        try {
-            pyodide = await loadPyodide();
-            const response = await fetch('./NodeParser.py');
-            const nodeParserContent = await response.text();
-            const pythonCode = `
-${nodeParserContent}
+export const PythonParser = async (filePath: string): Promise<ParserResult> => {
+    try {
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const lines = content.split('\n');
 
-param_count, return_count = parse_python_file("${filePath.replace(/\\/g, '/')}")
-[param_count, return_count]
-`;
-            const [paramCount, returnCount] = await pyodide.runPythonAsync(pythonCode);
-            return { paramCount, returnCount };
-        } catch (error) {
-            console.error('Error when parsing Python script:', error);
+        const funcLine = lines.find((line: string) => line.trim().startsWith('def execute'));
+        if (!funcLine) {
             return { paramCount: null, returnCount: null };
         }
-    };
 
-    return parsePythonScript();
-}
+        const paramMatch = funcLine.match(/\((.*?)\)/);
+        const paramCount = paramMatch ? paramMatch[1].split(',').filter((p: string) => p.trim()).length : 0;
+
+        const returnTypeMatch = funcLine.match(/-> *Tuple\[(.*?)\]/);
+        const returnCount = returnTypeMatch
+            ? returnTypeMatch[1].split(',').length
+            : null;
+
+        return { paramCount, returnCount };
+    } catch (error) {
+        console.error('Error parsing Python file:', error);
+        return { paramCount: null, returnCount: null };
+    }
+};

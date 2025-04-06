@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ForceGraph2D } from 'react-force-graph';
+import ForceGraph2D from 'react-force-graph-2d';
 import { Event } from '../GameData';
-import { Box } from '@mui/material';
 import SelectionList from './SelectionList';
 import { PythonParser } from './NodeParser';
 import path from 'path';
@@ -33,6 +32,16 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     const [commandNodes, setCommandNodes] = useState<CommandNode[]>([]);
     const [selectionOpen, setSelectionOpen] = useState(false);
     const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
+    const [nodes, setNodes] = useState<GraphNode[]>([]);
+    const [links, setLinks] = useState<GraphLink[]>([]);
+
+    useEffect(() => {
+        setNodes([{
+            id: '0',
+            name: 'Root',
+            content: ''
+        }]);
+    }, []);
 
     useEffect(() => {
         const loadCommandNodes = async () => {
@@ -64,41 +73,36 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
 
     const graphData = useMemo(() => {
         if (!event) {
-            return {
-                nodes: [{
-                    id: '0',
-                    name: 'Root',
-                    content: ''
-                }],
-                links: []
-            };
+            return { nodes, links };
         }
 
-        const nodes: GraphNode[] = event.orders.map((order, index) => ({
+        const newNodes: GraphNode[] = event.orders.map((order, index) => ({
             id: index.toString(),
             name: `order ${index + 1}`,
             content: order.content
         }));
 
-        const links: GraphLink[] = [];
+        const newLinks: GraphLink[] = [];
         if (event.adjacency) {
             const { from, to } = event.adjacency;
             to.forEach(targetId => {
-                links.push({
+                newLinks.push({
                     source: from.toString(),
                     target: targetId.toString()
                 });
             });
         }
 
-        return { nodes, links };
-    }, [event]);
+        setNodes(newNodes);
+        setLinks(newLinks);
+        return { nodes: newNodes, links: newLinks };
+    }, [event, nodes, links]);
 
     const handleNodeClick = useCallback((node: GraphNode) => {
         console.log('Clicked node:', node);
     }, []);
 
-    const handleContextMenu = useCallback((event: React.MouseEvent) => {
+    const handleContextMenu = useCallback((event: MouseEvent) => {
         event.preventDefault();
         setContextMenuPosition({ x: event.clientX, y: event.clientY });
         setSelectionOpen(true);
@@ -106,13 +110,13 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
 
     const handleNodeSelect = useCallback((filename: string) => {
         const newNode: GraphNode = {
-            id: (graphData.nodes.length).toString(),
+            id: (nodes.length).toString(),
             name: filename,
             content: filename
         };
 
-        graphData.nodes.push(newNode);
-    }, [graphData]);
+        setNodes(prevNodes => [...prevNodes, newNode]);
+    }, [nodes.length]);
 
     const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const label = node.name;
@@ -144,22 +148,23 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     }, []);
 
     return (
-        <Box
-            sx={{ width: '100%', height: '600px', border: '1px solid #ccc' }}
-            onContextMenu={handleContextMenu}
-        >
+        <>
             <ForceGraph2D
+                width={window.innerWidth * 0.4}
+                height={window.innerHeight * 0.6}
                 graphData={graphData}
                 nodeLabel="name"
                 nodeCanvasObject={nodeCanvasObject}
                 nodeCanvasObjectMode={() => 'replace'}
                 onNodeClick={handleNodeClick}
+                onBackgroundRightClick={handleContextMenu}
                 linkDirectionalArrowLength={6}
                 linkDirectionalArrowRelPos={1}
                 linkDirectionalParticles={2}
                 linkDirectionalParticleSpeed={0.005}
                 cooldownTicks={100}
-                d3VelocityDecay={0.1}
+                d3VelocityDecay={0.3}
+                nodeRelSize={2}
             />
             <SelectionList
                 open={selectionOpen}
@@ -167,7 +172,7 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
                 onClose={() => setSelectionOpen(false)}
                 onSelect={handleNodeSelect}
             />
-        </Box>
+        </>
     );
 };
 

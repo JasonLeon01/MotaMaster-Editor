@@ -4,13 +4,14 @@ import { RichTreeView } from '@mui/x-tree-view/RichTreeView';
 import { TreeViewBaseItem } from '@mui/x-tree-view/models';
 import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import GameData, { Map_, MapInfo, Tilemap } from './GameData';
+import GameData, { Event, Map_, MapInfo, Tilemap } from './GameData';
 import SingleInput from './utils/SingleInput';
 import Hint from './utils/uHint';
 import DraggableList from './utils/DraggableList';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import FileSelector from 'utils/FileSelector';
+import ForceGraph from 'utils/ForceGraph';
 
 interface MapEditorProps {
     root: string;
@@ -53,6 +54,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
     const [tilemapImage, setTilemapImage] = useState<HTMLImageElement | null>(null);
     const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
+    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -789,10 +791,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                     mt: 2,
                                     height: '45vh',
                                     overflow: 'auto',
-                                    backgroundColor: '#e0e0e0',
-                                    display: 'flex',
-                                    justifyContent: 'center',
-                                    alignItems: 'center'
+                                    backgroundColor: '#e0e0e0'
                                 }}>
                                     <Box
                                         sx={{ position: 'relative' }}
@@ -921,7 +920,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                 </Paper>
                             </Box>
 
-                            <Paper sx={{ width: '35vh', display: 'flex', flexDirection: 'column' }}>
+                            <Paper sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                 {!isEventMode &&
                                     <Box
                                         sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}
@@ -987,6 +986,25 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                                 )
                                             )}
                                         </Box>
+                                    </Box>
+                                }
+                                {isEventMode &&
+                                    <Box
+                                        sx={{
+                                            flex: 1,
+                                            height: '100%',
+                                            border: '1px solid #ccc',
+                                            overflow: 'hidden'
+                                        }}
+                                        onContextMenu={(e) => {
+                                            e.preventDefault();
+                                            e.stopPropagation();
+                                        }}
+                                    >
+                                        <ForceGraph
+                                            root={root}
+                                            event={selectedEvent}
+                                        />
                                     </Box>
                                 }
                             </Paper>
