@@ -143,26 +143,6 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     }, [nodes.length, commandNodes]);
 
     const isOverPort = useCallback((node: GraphNode, x: number, y: number, portIndex: number) => {
-        const portRadius = 10;
-        if (node.x !== undefined && node.y !== undefined && node.width !== undefined && node.height !== undefined) {
-            if (node.name === 'Root') {
-                const portX = node.x + node.width/2;
-                const portY = node.y;
-                const distance = Math.sqrt(Math.pow(x - portX, 2) + Math.pow(y - portY, 2));
-                console.log('Root port distance:', distance, 'threshold:', portRadius, 'at:', portX, portY);
-                return distance <= portRadius;
-            } else {
-                const nextsCount = commandNodes.find(n => n.name === node.name)?.nexts.length || 0;
-                if (portIndex >= nextsCount) return false;
-
-                const portSpacing = node.height / (nextsCount + 1);
-                const portX = node.x + node.width/2;
-                const portY = node.y - node.height/2 + portSpacing * (portIndex + 1);
-                const distance = Math.sqrt(Math.pow(x - portX, 2) + Math.pow(y - portY, 2));
-                console.log('Port distance:', distance, 'threshold:', portRadius, 'at:', portX, portY);
-                return distance <= portRadius;
-            }
-        }
         return false;
     }, [commandNodes]);
 
@@ -211,6 +191,33 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         }
     }, [connectingPort]);
 
+    const nodeRect = (node: any, ctx: CanvasRenderingContext2D, fontSize: number, nexts: string[]) => {
+        const paramLines = [
+            node.name,
+            ...node.paramsName.map((name: string, index: number) =>
+                `${name}: ${node.params[index] || ''}`)
+        ];
+
+        const padding = fontSize;
+        const lineHeight = fontSize * 1.2;
+        const paramsWidth = Math.max(...paramLines.map(line => ctx.measureText(line).width));
+
+        const nextsWidth = nexts.length > 0
+            ? Math.max(...nexts.map(next => ctx.measureText(next).width)) + padding * 2
+            : 0;
+
+        const textWidth = paramsWidth;
+        const baseHeight = paramLines.length * lineHeight + padding * 2;
+
+        const boxWidth = textWidth + padding * 2 + (nexts.length > 0 ? nextsWidth : 0);
+        const boxHeight = Math.max(
+            baseHeight,
+            nexts.length > 0 ? (nexts.length + 1) * (baseHeight / (nexts.length + 1)) : 0
+        );
+
+        return { boxWidth, boxHeight, padding, lineHeight };
+    };
+
     const nodeCanvasObject = useCallback((node: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const fontSize = 12/globalScale;
         ctx.font = `${fontSize}px Arial`;
@@ -224,22 +231,7 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         const commandNode = commandNodes.find(n => n.name === node.name);
         const nexts = commandNode?.nexts || [];
 
-        const padding = fontSize;
-        const lineHeight = fontSize * 1.2;
-        const paramsWidth = Math.max(...paramLines.map(line => ctx.measureText(line).width));
-
-        const nextsWidth = nexts.length > 0
-            ? Math.max(...nexts.map(next => ctx.measureText(next).width)) + padding * 2
-            : 0;
-
-        const textWidth = paramsWidth;
-        const baseHeight = paramLines.length * lineHeight + padding * 2;
-        const boxWidth = textWidth + padding * 2 + (nexts.length > 0 ? nextsWidth : 0);
-        const boxHeight = Math.max(
-            baseHeight,
-            nexts.length > 0 ? (nexts.length + 1) * (baseHeight / (nexts.length + 1)) : 0
-        );
-
+        const { boxWidth, boxHeight, padding, lineHeight } = nodeRect(node, ctx, fontSize, nexts);
 
         node.width = boxWidth;
         node.height = boxHeight;
@@ -270,48 +262,25 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
             const x = node.x - boxWidth/2 + padding;
             ctx.fillText(line, x, y);
         });
-
-        if (node.name === 'Root') {
-            const portX = node.x + boxWidth/2;
-            const portY = node.y;
-            ctx.beginPath();
-            ctx.arc(portX, portY, 3, 0, 2 * Math.PI);
-            ctx.fill();
-        }
-        else if (nexts.length > 0) {
-            const portSpacing = boxHeight / (nexts.length + 1);
-            nexts.forEach((next, i) => {
-                const portX = node.x + boxWidth/2;
-                const portY = node.y - boxHeight/2 + portSpacing * (i + 1);
-
-                ctx.beginPath();
-                ctx.arc(portX, portY, 3, 0, 2 * Math.PI);
-                ctx.fill();
-
-                ctx.textAlign = 'left';
-                ctx.fillStyle = 'black';
-                const labelX = node.x - boxWidth/2 + padding + textWidth + padding * 2;
-                ctx.fillText(next, labelX, portY);
-            });
-        }
-
-        if (connectingPort && connectingPort.sourceNode.id === node.id && mousePos) {
-            const sourceNode = connectingPort.sourceNode;
-            const portSpacing = boxHeight / (nexts.length + 1);
-            if (sourceNode.x && sourceNode.y && sourceNode.width && sourceNode.height) {
-                const startX = sourceNode.x + sourceNode.width/2;
-                const startY = sourceNode.y - sourceNode.height/2 + portSpacing * (connectingPort.portIndex + 1);
-
-                ctx.beginPath();
-                ctx.strokeStyle = '#2B7CE9';
-                ctx.setLineDash([5, 5]);
-                ctx.moveTo(startX, startY);
-                ctx.lineTo(mousePos.x, mousePos.y);
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-        }
     }, [commandNodes, draggingPort, mousePos]);
+
+    const nodePointerAreaPaint = useCallback((node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
+        const fontSize = 12/globalScale;
+        ctx.font = `${fontSize}px Arial`;
+
+        const commandNode = commandNodes.find(n => n.name === node.name);
+        const nexts = commandNode?.nexts || [];
+
+        const { boxWidth, boxHeight } = nodeRect(node, ctx, fontSize, nexts);
+
+        ctx.fillStyle = color;
+        ctx.fillRect(
+            node.x - boxWidth/2,
+            node.y - boxHeight/2,
+            boxWidth,
+            boxHeight
+        )
+    }, [commandNodes]);
 
     return (
         <>
@@ -321,10 +290,8 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
                 graphData={graphData}
                 nodeLabel="name"
                 nodeCanvasObject={nodeCanvasObject}
-                nodeCanvasObjectMode={() => 'after'}
-                nodeVal={(node: any) => {
-                    return Math.sqrt(Math.pow(node.width || 0, 2) + Math.pow(node.height || 0, 2));
-                }}
+                nodePointerAreaPaint={nodePointerAreaPaint}
+                nodeCanvasObjectMode={() => 'replace'}
                 onNodeClick={handleNodeMouseDown}
                 onBackgroundClick={handleBackgroundClick}
                 onNodeDrag={(node, translate) => {
@@ -339,7 +306,6 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
                 linkDirectionalParticleSpeed={0.005}
                 cooldownTicks={100}
                 d3VelocityDecay={0.3}
-                nodeRelSize={3}
                 dagMode="td"
                 dagLevelDistance={100}
             />
