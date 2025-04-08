@@ -55,6 +55,9 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
     const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
     const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
+    const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
+
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
         severity: 'success' | 'info' | 'warning' | 'error';
@@ -91,6 +94,22 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
         if (isEventMode) {
             setSelectedTileId(0);
         }
+    }, [isEventMode]);
+
+    useEffect(() => {
+        const updateContainerRect = () => {
+            if (containerRef.current) {
+                setContainerRect(containerRef.current.getBoundingClientRect());
+            }
+        };
+
+        updateContainerRect();
+
+        window.addEventListener('resize', updateContainerRect);
+
+        return () => {
+            window.removeEventListener('resize', updateContainerRect);
+        };
     }, [isEventMode]);
 
     const handleCreateRegion = () => {
@@ -990,6 +1009,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                 }
                                 {isEventMode &&
                                     <Box
+                                        ref={containerRef}
                                         sx={{
                                             flex: 1,
                                             height: '100%',
@@ -1004,6 +1024,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                         <ForceGraph
                                             root={root}
                                             event={selectedEvent}
+                                            containerRect={containerRect}
                                         />
                                     </Box>
                                 }

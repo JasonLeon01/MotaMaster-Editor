@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import ForceGraph2D from 'react-force-graph-2d';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d';
 import { Event } from '../GameData';
 import SelectionList from './SelectionList';
 import { PythonParser } from './NodeParser';
@@ -9,6 +9,7 @@ import fs from 'fs';
 interface ForceGraphProps {
     root: string;
     event: Event | null;
+    containerRect?: DOMRect | null;
 }
 
 interface GraphNode {
@@ -36,13 +37,17 @@ interface CommandNode {
     nexts: string[];
 }
 
-const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
+const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) => {
+    const graphRef = useRef<ForceGraphMethods>();
+    const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
     const [commandNodes, setCommandNodes] = useState<CommandNode[]>([]);
     const [selectionOpen, setSelectionOpen] = useState(false);
     const [contextMenuPosition, setContextMenuPosition] = useState<{ x: number, y: number } | null>(null);
     const [nodes, setNodes] = useState<GraphNode[]>([]);
     const [links, setLinks] = useState<GraphLink[]>([]);
-    const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
+
+    const [atIndex, setAtIndex] = useState<number | null>(null);
+
     const [connectingPort, setConnectingPort] = useState<{
         sourceNode: GraphNode;
         portIndex: number;
@@ -89,6 +94,21 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
             loadCommandNodes();
         }
     }, [root]);
+
+    useEffect(() => {
+        const handleMouseMove = (event: MouseEvent) => {
+            const canvas = document.querySelector('canvas');
+            if (!canvas || !graphRef.current || !containerRect) return;
+
+            const mouseX = event.clientX - containerRect.left;
+            const mouseY = event.clientY - containerRect.top;
+
+            setMousePos({ x: mouseX, y: mouseY });
+        };
+
+        window.addEventListener('mousemove', handleMouseMove);
+        return () => window.removeEventListener('mousemove', handleMouseMove);
+    }, [containerRect]);
 
     const graphData = useMemo(() => {
         if (!event || !commandNodes.length) {
@@ -146,50 +166,21 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         return false;
     }, [commandNodes]);
 
-    const handleNodeMouseDown = useCallback((node: GraphNode, event: any) => {
-        event.preventDefault();
-        event.stopPropagation();
-
-        if (connectingPort) {
-            setLinks(prevLinks => [...prevLinks, {
-                source: connectingPort.sourceNode.id,
-                target: node.id
-            }]);
-            setConnectingPort(null);
-            setMousePos(null);
-            return;
-        }
-
-        if (!node.x || !node.y) return;
-
-        const canvas = event.target;
-        const rect = canvas.getBoundingClientRect();
-        const transform = canvas.getContext('2d').getTransform();
-
-        const mouseX = (event.clientX - rect.left - rect.width/2) / transform.a;
-        const mouseY = (event.clientY - rect.top - rect.height/2) / transform.d;
-
-        console.log('Node position:', node.x, node.y);
-        console.log('Mouse position:', mouseX, mouseY);
-
-        const nextsCount = commandNodes.find(n => n.name === node.name)?.nexts.length || 0;
-
-        for (let i = 0; i < nextsCount; i++) {
-            if (isOverPort(node, mouseX, mouseY, i)) {
-                console.log('Port hit:', i);
-                setConnectingPort({ sourceNode: node, portIndex: i });
-                setMousePos({ x: mouseX, y: mouseY });
-                return;
-            }
-        }
-    }, [commandNodes, isOverPort, connectingPort]);
+    const handleNodeMouseDown = useCallback((node: any, event: any) => {
+        return;
+    }, [commandNodes, connectingPort]);
 
     const handleBackgroundClick = useCallback((event: any) => {
-        if (connectingPort) {
-            setConnectingPort(null);
-            setMousePos(null);
-        }
+        return;
     }, [connectingPort]);
+
+    const inRange = (centre: { x: number, y: number}, radius: number) => {
+        if (!mousePos) {
+            console.log(mousePos);
+            return false;
+        }
+        return (Math.pow(centre.x - mousePos.x, 2) + Math.pow(centre.y - mousePos.y, 2)) <= Math.pow(radius, 2);
+    }
 
     const nodeRect = (node: any, ctx: CanvasRenderingContext2D, fontSize: number, nexts: string[]) => {
         const paramLines = [
@@ -202,17 +193,21 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
         const lineHeight = fontSize * 1.2;
         const paramsWidth = Math.max(...paramLines.map(line => ctx.measureText(line).width));
 
-        const nextsWidth = nexts.length > 0
+        const has_next = node.name === 'Root' ? true : (nexts.length > 0);
+
+        const nextsWidth = node.name === 'Root'
+            ? ctx.measureText('=>').width + padding * 2
+            : (has_next
             ? Math.max(...nexts.map(next => ctx.measureText(next).width)) + padding * 2
-            : 0;
+            : 0);
 
         const textWidth = paramsWidth;
         const baseHeight = paramLines.length * lineHeight + padding * 2;
 
-        const boxWidth = textWidth + padding * 2 + (nexts.length > 0 ? nextsWidth : 0);
+        const boxWidth = textWidth + padding * 2 + (has_next ? nextsWidth : 0);
         const boxHeight = Math.max(
             baseHeight,
-            nexts.length > 0 ? (nexts.length + 1) * (baseHeight / (nexts.length + 1)) : 0
+            has_next ? (nexts.length + 1) * (baseHeight / (nexts.length + 1)) : 0
         );
 
         return { boxWidth, boxHeight, padding, lineHeight };
@@ -262,6 +257,65 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
             const x = node.x - boxWidth/2 + padding;
             ctx.fillText(line, x, y);
         });
+
+        setAtIndex(null);
+        const circleRadius = padding / 2;
+        if (node.name === 'Root') {
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = 'black';
+            const textY = node.y - boxHeight/2 + padding + lineHeight * 0.5;
+            const textX = node.x + boxWidth/2 - padding;
+            ctx.fillText('=>', textX, textY);
+            ctx.fillStyle = '#D3D3D3';
+
+            let circleX = node.x + boxWidth/2;
+            const circleY = textY;
+            let { x, y } = graphRef.current?.graph2ScreenCoords(circleX, circleY) || { x: 0, y: 0 };
+            const rightEdge = x;
+            circleX -= circleRadius;
+            x = (graphRef.current?.graph2ScreenCoords(circleX, circleY) || { x: 0, y: 0 }).x;
+            const radius = rightEdge - x;
+            if (x && y) {
+                if (inRange({ x, y }, radius)) {
+                    ctx.fillStyle = '#90EE90';
+                    setAtIndex(0);
+                }
+            }
+            ctx.beginPath();
+            ctx.arc(circleX, circleY, padding / 2, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+        else {
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            if (nexts.length > 0) {
+                nexts.forEach((next, index) => {
+                    ctx.fillStyle = 'black';
+                    const textY = node.y - boxHeight/2 + padding + lineHeight * (index + 0.5);
+                    const textX = node.x + boxWidth/2 - padding;
+                    ctx.fillText(next, textX, textY);
+
+                    ctx.fillStyle = '#D3D3D3';
+                    let circleX = node.x + boxWidth/2;
+                    const circleY = textY;
+                    let { x, y } = graphRef.current?.graph2ScreenCoords(circleX, circleY) || { x: 0, y: 0 };
+                    const rightEdge = x;
+                    circleX -= circleRadius;
+                    x = (graphRef.current?.graph2ScreenCoords(circleX, circleY) || { x: 0, y: 0 }).x;
+                    const radius = rightEdge - x;
+                    if (x && y) {
+                        if (inRange({ x, y }, radius)) {
+                            ctx.fillStyle = '#90EE90';
+                            setAtIndex(index);
+                        }
+                    }
+                    ctx.beginPath();
+                    ctx.arc(circleX, circleY, padding / 2, 0, 2 * Math.PI);
+                    ctx.fill();
+                })
+            }
+        }
     }, [commandNodes, draggingPort, mousePos]);
 
     const nodePointerAreaPaint = useCallback((node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
@@ -285,9 +339,11 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event }) => {
     return (
         <>
             <ForceGraph2D
+                ref={graphRef}
                 width={window.innerWidth * 0.4}
                 height={window.innerHeight * 0.6}
                 graphData={graphData}
+                enableZoomInteraction={false}
                 nodeLabel="name"
                 nodeCanvasObject={nodeCanvasObject}
                 nodePointerAreaPaint={nodePointerAreaPaint}
