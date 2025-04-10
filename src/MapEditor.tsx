@@ -4,7 +4,7 @@ import { RichTreeView } from '@mui/x-tree-view/RichTreeView';
 import { TreeViewBaseItem } from '@mui/x-tree-view/models';
 import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
-import GameData, { Event, Map_, MapInfo, Tilemap } from './GameData';
+import GameData, { Event_, Map_, MapInfo, Tilemap } from './GameData';
 import SingleInput from './utils/SingleInput';
 import Hint from './utils/uHint';
 import DraggableList from './utils/DraggableList';
@@ -54,7 +54,7 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
     const [tilemapImage, setTilemapImage] = useState<HTMLImageElement | null>(null);
     const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
-    const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
+    const [selectedEvent, setSelectedEvent] = useState<Event_ | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
     const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
 

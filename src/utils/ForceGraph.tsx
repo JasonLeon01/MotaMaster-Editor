@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import ForceGraph2D, { ForceGraphMethods } from 'react-force-graph-2d';
-import { Event } from '../GameData';
+import { Event_ } from '../GameData';
 import SelectionList from './SelectionList';
 import { PythonParser } from './NodeParser';
 import path from 'path';
@@ -8,7 +8,7 @@ import fs from 'fs';
 
 interface ForceGraphProps {
     root: string;
-    event: Event | null;
+    event: Event_ | null;
     containerRect?: DOMRect | null;
 }
 
@@ -39,6 +39,18 @@ interface CommandNode {
 
 const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) => {
     const graphRef = useRef<ForceGraphMethods>();
+    const [localEvent, setLocalEvent] = useState<Event_>(() => {
+        return event || {
+            id: 0,
+            name: '',
+            appear: '',
+            orders: [{
+                id: 'Root',
+                params: ['']
+            }],
+            adjacency: []
+        };
+    });
     const [mousePos, setMousePos] = useState<{ x: number, y: number } | null>(null);
     const [commandNodes, setCommandNodes] = useState<CommandNode[]>([]);
     const [selectionOpen, setSelectionOpen] = useState(false);
@@ -46,25 +58,39 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     const [nodes, setNodes] = useState<GraphNode[]>([]);
     const [links, setLinks] = useState<GraphLink[]>([]);
 
-    const [atIndex, setAtIndex] = useState<number | null>(null);
-
-    const [connectingPort, setConnectingPort] = useState<{
-        sourceNode: GraphNode;
-        portIndex: number;
-    } | null>(null);
-    const [draggingPort, setDraggingPort] = useState<{
-        sourceNode: GraphNode;
-        portIndex: number;
-    } | null>(null);
+    const [hoveredNode, setHoveredNode] = useState<GraphNode | null>(null);
+    const [hoveredLinkPointOfNode, setHoveredLinkPointOfNode] = useState<GraphNode | null>(null);
+    const [hoveredNodeLinkPointPosition, setHoveredNodeLinkPointPosition] = useState<{ x: number, y: number } | null>(null);
+    const [startIndex, setStartIndex] = useState<number | null>(null);
+    const [linkStart, setLinkStart] = useState<GraphNode | null>(null);
+    const [linkStartPosition, setLinkStartPosition] = useState<{ x: number, y: number } | null>(null);
 
     useEffect(() => {
         setNodes([{
             id: '0',
             name: 'Root',
-            paramsName: [],
-            params: []
+            paramsName: ['=>'],
+            params: ['']
         }]);
     }, []);
+
+    useEffect(() => {
+        if (localEvent) {
+            setLocalEvent(localEvent ||
+                {
+                    id: 0,
+                    name: '',
+                    appear: '',
+                    orders: [{
+                        id: 'Root',
+                        params: ['']
+                    }],
+                    adjacency: []
+                }
+            );
+        }
+    }, [localEvent]);
+
 
     useEffect(() => {
         const loadCommandNodes = async () => {
@@ -96,12 +122,12 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     }, [root]);
 
     useEffect(() => {
-        const handleMouseMove = (event: MouseEvent) => {
+        const handleMouseMove = (ev: MouseEvent) => {
             const canvas = document.querySelector('canvas');
             if (!canvas || !graphRef.current || !containerRect) return;
 
-            const mouseX = event.clientX - containerRect.left;
-            const mouseY = event.clientY - containerRect.top;
+            const mouseX = ev.clientX - containerRect.left;
+            const mouseY = ev.clientY - containerRect.top;
 
             setMousePos({ x: mouseX, y: mouseY });
         };
@@ -111,36 +137,53 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     }, [containerRect]);
 
     const graphData = useMemo(() => {
-        if (!event || !commandNodes.length) {
+        if (!commandNodes.length) {
             return { nodes, links };
         }
 
-        const newNodes: GraphNode[] = event.orders.map((order, index) => ({
-            id: order.id,
-            name: order.id,
-            paramsName: commandNodes.find(node => node.filename === order.id)?.params || [],
-            params: order.params
-        }));
+        const newNodes: GraphNode[] = localEvent.orders.map((order, index) => {
+            const commandNode = commandNodes.find(node => node.filename === order.id);
+            return {
+                id: index.toString(),
+                name: order.id === 'Root' ? 'Root' : (commandNode?.name || ''),
+                paramsName: commandNode?.params || [],
+                params: [...Array(order.params.length)].map(() => ''),
+            };
+        });
 
         const newLinks: GraphLink[] = [];
-        if (event.adjacency) {
-            const { from, to } = event.adjacency;
-            to.forEach(targetId => {
-                newLinks.push({
-                    source: from.toString(),
-                    target: targetId.toString()
+        if (localEvent.adjacency) {
+            localEvent.adjacency.forEach(adj => {
+                const { from, to } = adj;
+                to.forEach(targetId => {
+                    newLinks.push({
+                        source: from.toString(),
+                        target: targetId.toString()
+                    });
                 });
             });
         }
 
-        setNodes(newNodes);
-        setLinks(newLinks);
-        return { nodes: newNodes, links: newLinks };
-    }, [event, nodes, links, commandNodes.length, commandNodes]);
+        setNodes(prevNodes => {
+            if (JSON.stringify(prevNodes) !== JSON.stringify(newNodes)) {
+                return newNodes;
+            }
+            return prevNodes;
+        });
 
-    const handleContextMenu = useCallback((event: MouseEvent) => {
-        event.preventDefault();
-        setContextMenuPosition({ x: event.clientX, y: event.clientY });
+        setLinks(prevLinks => {
+            if (JSON.stringify(prevLinks) !== JSON.stringify(newLinks)) {
+                return newLinks;
+            }
+            return prevLinks;
+        });
+
+        return { nodes: newNodes, links: newLinks };
+    }, [localEvent, nodes, links, commandNodes.length, commandNodes]);
+
+    const handleContextMenu = useCallback((ev: MouseEvent) => {
+        ev.preventDefault();
+        setContextMenuPosition({ x: ev.clientX, y: ev.clientY });
         setSelectionOpen(true);
     }, []);
 
@@ -157,26 +200,73 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             paramsName: selectedNode.params,
             params: [...Array(selectedNode.params.length)].map(() => '')
         };
-        console.log(newNode);
 
         setNodes(prevNodes => [...prevNodes, newNode]);
+        localEvent?.orders.push({
+            id: selectedNode.filename,
+            params: newNode.params
+        });
     }, [nodes.length, commandNodes]);
 
-    const isOverPort = useCallback((node: GraphNode, x: number, y: number, portIndex: number) => {
-        return false;
-    }, [commandNodes]);
+    const handleNodeMouseDown = useCallback((node: any, ev: any) => {
+        if (!linkStart) {
+            if (hoveredLinkPointOfNode === node && hoveredNodeLinkPointPosition) {
+                setLinkStart(node);
+                setLinkStartPosition({ x: hoveredNodeLinkPointPosition.x, y: hoveredNodeLinkPointPosition.y });
+                return;
+            }
+        }
+        else {
+            if (node && linkStart !== node) {
+                const index = localEvent?.adjacency.findIndex(adj => adj.from === parseInt(linkStart.id));
+                if (index !== -1) {
+                    if (localEvent && localEvent.adjacency[index].to) {
+                        localEvent.adjacency[index].to[startIndex!] = parseInt(node.id);
+                    }
+                }
+                else {
+                    localEvent?.adjacency.push({
+                        from: parseInt(linkStart.id),
+                        to: Array(node.params.length)
+                            .fill(null)
+                            .map((_, i) => i === startIndex ? parseInt(node.id) : null)
+                            .filter((id): id is number => id !== null)
+                        }
+                    );
+                }
+                const newLinks: GraphLink[] = [];
+                localEvent?.adjacency.forEach(adj => {
+                    const { from, to } = adj;
+                    to.forEach(targetId => {
+                        if (targetId !== null) {
+                            newLinks.push({
+                                source: from.toString(),
+                                target: targetId.toString()
+                            });
+                        }
+                    });
+                });
+                setLinks(newLinks);
+                console.log('newlinks', newLinks);
+            }
+        }
+        setLinkStart(null);
+        setLinkStartPosition(null);
+        setStartIndex(null);
+    }, [commandNodes, linkStart, hoveredLinkPointOfNode, hoveredNodeLinkPointPosition, startIndex, links, nodes]);
 
-    const handleNodeMouseDown = useCallback((node: any, event: any) => {
-        return;
-    }, [commandNodes, connectingPort]);
-
-    const handleBackgroundClick = useCallback((event: any) => {
-        return;
-    }, [connectingPort]);
+    const handleBackgroundClick = useCallback((ev: any) => {
+        if (linkStart) {
+            if (hoveredNode === null) {
+                setLinkStart(null);
+                setLinkStartPosition(null);
+                setStartIndex(null);
+            }
+        }
+    }, [commandNodes, linkStart, hoveredLinkPointOfNode, hoveredNodeLinkPointPosition, startIndex, hoveredNode, links, nodes]);
 
     const inRange = (centre: { x: number, y: number}, radius: number) => {
         if (!mousePos) {
-            console.log(mousePos);
             return false;
         }
         return (Math.pow(centre.x - mousePos.x, 2) + Math.pow(centre.y - mousePos.y, 2)) <= Math.pow(radius, 2);
@@ -258,8 +348,10 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             ctx.fillText(line, x, y);
         });
 
-        setAtIndex(null);
         const circleRadius = padding / 2;
+        let targetNode = null;
+        let targetPos = null;
+        let startIndex = null;
         if (node.name === 'Root') {
             ctx.textAlign = 'right';
             ctx.textBaseline = 'middle';
@@ -279,7 +371,9 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             if (x && y) {
                 if (inRange({ x, y }, radius)) {
                     ctx.fillStyle = '#90EE90';
-                    setAtIndex(0);
+                    targetNode = node;
+                    targetPos = { x: circleX, y: circleY };
+                    startIndex = 0;
                 }
             }
             ctx.beginPath();
@@ -307,7 +401,9 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
                     if (x && y) {
                         if (inRange({ x, y }, radius)) {
                             ctx.fillStyle = '#90EE90';
-                            setAtIndex(index);
+                            targetNode = node;
+                            targetPos = { x: circleX, y: circleY };
+                            startIndex = index;
                         }
                     }
                     ctx.beginPath();
@@ -316,7 +412,26 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
                 })
             }
         }
-    }, [commandNodes, draggingPort, mousePos]);
+
+        if (hoveredNode && targetNode && targetPos) {
+            setHoveredLinkPointOfNode(targetNode);
+            setHoveredNodeLinkPointPosition(targetPos);
+            setStartIndex(startIndex);
+        }
+
+        if (linkStartPosition) {
+            ctx.strokeStyle = 'black';
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(linkStartPosition.x, linkStartPosition.y);
+            const graphCoords = graphRef.current?.screen2GraphCoords(
+                mousePos!.x,
+                mousePos!.y
+            ) || { x: 0, y: 0 };
+            ctx.lineTo(graphCoords.x, graphCoords.y);
+            ctx.stroke();
+        }
+    }, [commandNodes, mousePos]);
 
     const nodePointerAreaPaint = useCallback((node: any, color: string, ctx: CanvasRenderingContext2D, globalScale: number) => {
         const fontSize = 12/globalScale;
@@ -336,6 +451,9 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
         )
     }, [commandNodes]);
 
+    const linkCanvasObject = useCallback((link: any, ctx: CanvasRenderingContext2D, globalScale: number) => {
+    }, []);
+
     return (
         <>
             <ForceGraph2D
@@ -348,18 +466,17 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
                 nodeCanvasObject={nodeCanvasObject}
                 nodePointerAreaPaint={nodePointerAreaPaint}
                 nodeCanvasObjectMode={() => 'replace'}
+                onNodeHover={(node: any, previousNode: any) => {
+                    setHoveredNode(node);
+                  }}
                 onNodeClick={handleNodeMouseDown}
                 onBackgroundClick={handleBackgroundClick}
-                onNodeDrag={(node, translate) => {
-                    if (connectingPort) {
-                        return false;
-                    }
-                }}
                 onBackgroundRightClick={handleContextMenu}
                 linkDirectionalArrowLength={6}
                 linkDirectionalArrowRelPos={1}
                 linkDirectionalParticles={2}
                 linkDirectionalParticleSpeed={0.005}
+                linkCanvasObject={linkCanvasObject}
                 cooldownTicks={100}
                 d3VelocityDecay={0.3}
                 dagMode="td"
