@@ -81,12 +81,12 @@ export interface Order {
     params: string[];
 }
 
-export interface Event {
+export interface Event_ {
     id: number;
     name: string;
     appear: string;
     orders: Order[];
-    adjacency: { from: number, to: number[] };
+    adjacency: { from: number, to: number[] }[];
 }
 
 export interface Map_ {
@@ -102,7 +102,7 @@ export interface Map_ {
         name: string;
         tilemap: number;
         tiles: number[][];
-        events: { [key: number]: Event };
+        events: { [key: number]: Event_ };
     }[];
 }
 
