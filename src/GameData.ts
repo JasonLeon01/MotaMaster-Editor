@@ -86,7 +86,7 @@ export interface Event_ {
     name: string;
     appear: string;
     orders: Order[];
-    adjacency: { from: number, to: number[] }[];
+    adjacency: { from: number, to: (number | null)[] }[];
 }
 
 export interface Map_ {

@@ -75,24 +75,6 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     }, []);
 
     useEffect(() => {
-        if (localEvent) {
-            setLocalEvent(localEvent ||
-                {
-                    id: 0,
-                    name: '',
-                    appear: '',
-                    orders: [{
-                        id: 'Root',
-                        params: ['']
-                    }],
-                    adjacency: []
-                }
-            );
-        }
-    }, [localEvent]);
-
-
-    useEffect(() => {
         const loadCommandNodes = async () => {
             const commandsPath = path.join(root, 'data', 'commands');
             try {
@@ -130,6 +112,7 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             const mouseY = ev.clientY - containerRect.top;
 
             setMousePos({ x: mouseX, y: mouseY });
+            console.log(localEvent);
         };
 
         window.addEventListener('mousemove', handleMouseMove);
@@ -156,10 +139,12 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             localEvent.adjacency.forEach(adj => {
                 const { from, to } = adj;
                 to.forEach(targetId => {
-                    newLinks.push({
-                        source: from.toString(),
-                        target: targetId.toString()
-                    });
+                    if (targetId!== null) {
+                        newLinks.push({
+                            source: from.toString(),
+                            target: (targetId ?? -1).toString()
+                        });
+                    }
                 });
             });
         }
@@ -218,6 +203,23 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
         }
         else {
             if (node && linkStart !== node) {
+                if (node.name === 'Root') {
+                    console.log('Not allowed to connect to Root');
+                    setLinkStart(null);
+                    setLinkStartPosition(null);
+                    setStartIndex(null);
+                    return;
+                }
+                const existingConnection = localEvent?.adjacency.some(adj => {
+                    return adj.to.includes(parseInt(node.id));
+                })
+                if (existingConnection) {
+                    console.log('Target node already connected');
+                    setLinkStart(null);
+                    setLinkStartPosition(null);
+                    setStartIndex(null);
+                    return;
+                }
                 const index = localEvent?.adjacency.findIndex(adj => adj.from === parseInt(linkStart.id));
                 if (index !== -1) {
                     if (localEvent && localEvent.adjacency[index].to) {
@@ -225,12 +227,12 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
                     }
                 }
                 else {
+                    const commandNode = commandNodes.find(node => node.name === linkStart.name);
                     localEvent?.adjacency.push({
                         from: parseInt(linkStart.id),
-                        to: Array(node.params.length)
+                        to: Array(commandNode?.nexts.length)
                             .fill(null)
                             .map((_, i) => i === startIndex ? parseInt(node.id) : null)
-                            .filter((id): id is number => id !== null)
                         }
                     );
                 }
@@ -463,8 +465,11 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
             return;
         }
 
-        const sourceLinks = links.filter(l => l.source === link.source.id);
-        const linkIndex = sourceLinks.findIndex(l => l.target === link.target.id);
+        const sourceLinks = localEvent.adjacency.find(l => l.from.toString() === link.source.id);
+        if (!sourceLinks) {
+            return;
+        }
+        const linkIndex = sourceLinks.to.findIndex(l => l?.toString() === link.target.id);
 
         const commandNode = commandNodes.find(n => n.name === sourceNode.name);
         const nexts = commandNode?.nexts || [];
