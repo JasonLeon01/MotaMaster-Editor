@@ -66,6 +66,26 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     const [linkStartPosition, setLinkStartPosition] = useState<{ x: number, y: number } | null>(null);
 
     useEffect(() => {
+        if (graphRef.current) {
+            const linkForce = graphRef.current.d3Force('link');
+            if (linkForce) {
+                linkForce.distance(35);
+            }
+
+            const chargeForce = graphRef.current.d3Force('charge');
+            if (chargeForce) {
+                chargeForce.strength((node: any) => {
+                    const beingEnd = links.some(link => link.target === node.id);
+                    return beingEnd ? -250 : -5;
+                });
+            }
+
+            graphRef.current.d3Force('center', null);
+            graphRef.current.d3ReheatSimulation();
+        }
+    }, [graphRef.current, links]);
+
+    useEffect(() => {
         setNodes([{
             id: '0',
             name: 'Root',
@@ -126,11 +146,12 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
 
         const newNodes: GraphNode[] = localEvent.orders.map((order, index) => {
             const commandNode = commandNodes.find(node => node.filename === order.id);
+            const sss = ['fff\nfffffff', 'ggggggggg\ngg\ngggggg\nahlaf'];
             return {
                 id: index.toString(),
                 name: order.id === 'Root' ? 'Root' : (commandNode?.name || ''),
                 paramsName: commandNode?.params || [],
-                params: [...Array(order.params.length)].map(() => ''),
+                params: [...Array(order.params.length)].map(() => sss[index % sss.length]),
             };
         });
 
@@ -275,15 +296,25 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
     }
 
     const nodeRect = (node: any, ctx: CanvasRenderingContext2D, fontSize: number, nexts: string[]) => {
-        const paramLines = [
-            node.name,
-            ...node.paramsName.map((name: string, index: number) =>
-                `${name}: ${node.params[index] || ''}`)
-        ];
+        let paramLines: string[] = [];
+        paramLines.push(node.name);
+
+        node.paramsName.forEach((name: string, index: number) => {
+            const param = node.params[index] || '';
+            const paramSplit = param.split('\n');
+            const nameStr = `${name}: `;
+            paramSplit.forEach((part: string, i: number) => {
+                if (i === 0) {
+                    paramLines.push(nameStr + part);
+                } else {
+                    paramLines.push(part);
+                }
+            });
+        });
 
         const padding = fontSize;
         const lineHeight = fontSize * 1.2;
-        const paramsWidth = Math.max(...paramLines.map(line => ctx.measureText(line).width));
+        const paramsWidth = Math.max(...paramLines.map((line: string) => ctx.measureText(line).width));
 
         const has_next = node.name === 'Root' ? true : (nexts.length > 0);
 
@@ -309,16 +340,29 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
         const fontSize = 12/globalScale;
         ctx.font = `${fontSize}px Arial`;
 
-        const paramLines = [
-            node.name,
-            ...node.paramsName.map((name: string, index: number) =>
-                `${name}: ${node.params[index] || ''}`)
-        ];
-
         const commandNode = commandNodes.find(n => n.name === node.name);
         const nexts = commandNode?.nexts || [];
 
         const { boxWidth, boxHeight, padding, lineHeight } = nodeRect(node, ctx, fontSize, nexts);
+        let xStart = node.x - boxWidth/2 + padding;
+
+        let paramLines: { name: string, part: string, nameX: number, partX: number }[] = [];
+        paramLines.push({ name: node.name, part: '', nameX: xStart, partX: xStart + ctx.measureText(node.name).width });
+
+        node.paramsName.forEach((name: string, index: number) => {
+            const param = node.params[index] || '';
+            const paramSplit = param.split('\n');
+            const nameStr = `${name}: `;
+            const nameWidth = ctx.measureText(nameStr).width;
+            const partX = xStart + nameWidth;
+            paramSplit.forEach((part: string, i: number) => {
+                if (i === 0) {
+                    paramLines.push({ name: nameStr, part, nameX: xStart, partX });
+                } else {
+                    paramLines.push({ name: '', part, nameX: xStart, partX });
+                }
+            });
+        });
 
         node.width = boxWidth;
         node.height = boxHeight;
@@ -346,8 +390,10 @@ const ForceGraph: React.FC<ForceGraphProps> = ({ root, event, containerRect }) =
         ctx.fillStyle = 'black';
         paramLines.forEach((line, index) => {
             const y = node.y - boxHeight/2 + padding + lineHeight * (index + 0.5);
-            const x = node.x - boxWidth/2 + padding;
-            ctx.fillText(line, x, y);
+            ctx.fillStyle = '#555';
+            ctx.fillText(line.name, line.nameX, y);
+            ctx.fillStyle = '#000';
+            ctx.fillText(line.part, line.partX, y);
         });
 
         const circleRadius = padding / 2;
