@@ -11,7 +11,7 @@ import DraggableList from './utils/DraggableList';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import FileSelector from 'utils/FileSelector';
-import ForceGraph from 'utils/ForceGraph';
+// import ForceGraph from 'utils/ForceGraph';
 
 interface MapEditorProps {
     root: string;
@@ -1021,11 +1021,11 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                             e.stopPropagation();
                                         }}
                                     >
-                                        <ForceGraph
+                                        {/* <ForceGraph
                                             root={root}
                                             event={selectedEvent}
                                             containerRect={containerRect}
-                                        />
+                                        /> */}
                                     </Box>
                                 }
                             </Paper>
