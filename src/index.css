@@ -1,13 +1,13 @@
 @font-face {
-  font-family: 'HarmonyOS_Sans_SC_Regular';
-  src: url('../public/HarmonyOS_Sans_SC_Regular.ttf') format('truetype');
+  font-family: 'HarmonyOS_Sans_SC_Medium';
+  src: url('../public/HarmonyOS_Sans_SC_Medium.ttf') format('truetype');
   font-weight: normal;
   font-style: normal;
 }
 
 body {
   margin: 0;
-  font-family: 'HarmonyOS_Sans_SC_Regular', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+  font-family: 'HarmonyOS_Sans_SC_Medium', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
     'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
     sans-serif;
   -webkit-font-smoothing: antialiased;
