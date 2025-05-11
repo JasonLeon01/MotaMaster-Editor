@@ -11,7 +11,7 @@ import DraggableList from './utils/DraggableList';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import FileSelector from 'utils/FileSelector';
-// import ForceGraph from 'utils/ForceGraph';
+import Panel from 'editorPanels/Panel';
 
 interface MapEditorProps {
     root: string;
@@ -56,7 +56,6 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
     const previewCanvasRef = useRef<HTMLCanvasElement>(null);
     const [selectedEvent, setSelectedEvent] = useState<Event_ | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
-    const [containerRect, setContainerRect] = useState<DOMRect | null>(null);
 
     const [snackbar, setSnackbar] = useState<{
         open: boolean;
@@ -94,22 +93,6 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
         if (isEventMode) {
             setSelectedTileId(0);
         }
-    }, [isEventMode]);
-
-    useEffect(() => {
-        const updateContainerRect = () => {
-            if (containerRef.current) {
-                setContainerRect(containerRef.current.getBoundingClientRect());
-            }
-        };
-
-        updateContainerRect();
-
-        window.addEventListener('resize', updateContainerRect);
-
-        return () => {
-            window.removeEventListener('resize', updateContainerRect);
-        };
     }, [isEventMode]);
 
     const handleCreateRegion = () => {
@@ -1021,11 +1004,13 @@ function MapEditor({ root, mapsInfo, mapRecord, cellSize }: MapEditorProps) {
                                             e.stopPropagation();
                                         }}
                                     >
-                                        {/* <ForceGraph
+                                        <Panel
                                             root={root}
                                             event={selectedEvent}
-                                            containerRect={containerRect}
-                                        /> */}
+                                            onChange={(newEv) => {
+                                                setSelectedEvent(newEv);
+                                            }}
+                                        />
                                     </Box>
                                 }
                             </Paper>

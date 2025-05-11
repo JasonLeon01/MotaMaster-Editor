@@ -79,10 +79,11 @@ export interface Tilemap {
 export interface Order {
     id: string;
     params: string[];
+    position: { x: number, y: number };
 }
 
 export interface Event_ {
-    id: number;
+    id: string;
     name: string;
     appear: string;
     orders: Order[];
